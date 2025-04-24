@@ -1,7 +1,10 @@
-import GoogleSignIn from "@/components/google-sign-in";
+'use server'
 
-export default function Page() {
-    return(
-        <GoogleSignIn/>
-    )
+import GoogleSignIn from "@/components/google-sign-in";
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
+
+export default async function Page() {
+    const session = await auth();
+    return session ? redirect("/dashboard"):(<GoogleSignIn/>)
 }

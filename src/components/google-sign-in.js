@@ -1,13 +1,12 @@
-import {signIn, signOut, auth} from "@/lib/auth";
+import {signIn} from "@/lib/auth";
 
 
 export default async function GoogleSignIn() {
-    const session  = await auth();
     return(
         <form
         action={async () => {
             "use server";
-            await signIn("google",{redirectTo:'/'});
+            await signIn("google",{redirectTo:'/dashboard'});
         }}>
             <button>Sign In With Google</button>
         </form>
