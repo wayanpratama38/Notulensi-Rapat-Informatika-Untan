@@ -20,9 +20,43 @@ export default function TabComponent() {
         </div>
         
         <TabPanels className="mt-3 w-full">
-          <TabPanelContent text={"Content 1"}/>
-          <TabPanelContent text={"Content 2"}/>
-          <TabPanelContent text={"Content 3"}/>
+          <TabPanelContent meetings={[
+            {
+                name : "Rapat Tim Marketing",
+                date : "2024-03-25T09:00:00",
+                status : "active"
+            },
+            {
+                name : "Rapat Tim IT",
+                date : "2024-03-25T09:00:00",
+                status : "finished"
+            },
+            {
+                name : "Rapat Tim IT",
+                date : "2024-03-25T09:00:00",
+                status : "finished"
+            },
+            {
+                name : "Rapat Tim IT",
+                date : "2024-03-25T09:00:00",
+                status : "finished"
+            },
+            {
+                name : "Rapat Tim IT",
+                date : "2024-03-25T09:00:00",
+                status : "finished"
+            },
+            {
+                name : "Rapat Tim IT",
+                date : "2024-03-25T09:00:00",
+                status : "finished"
+            },
+            {
+                name : "Rapat Tim IT",
+                date : "2024-03-25T09:00:00",
+                status : "finished"
+            }
+          ]}/>
         </TabPanels>
       </TabGroup>
     )
