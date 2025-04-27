@@ -24,37 +24,44 @@ export default function TabComponent() {
             {
                 name : "Rapat Tim Marketing",
                 date : "2024-03-25T09:00:00",
-                status : "active"
+                status : "active",
+                id : "123"
             },
             {
                 name : "Rapat Tim IT",
                 date : "2024-03-25T09:00:00",
-                status : "finished"
+                status : "finished",
+                id : "124"
             },
             {
                 name : "Rapat Tim IT",
                 date : "2024-03-25T09:00:00",
-                status : "finished"
+                status : "finished",
+                id : "125"
             },
             {
                 name : "Rapat Tim IT",
                 date : "2024-03-25T09:00:00",
-                status : "finished"
+                status : "finished",
+                id : "126"
             },
             {
                 name : "Rapat Tim IT",
                 date : "2024-03-25T09:00:00",
-                status : "finished"
+                status : "finished",
+                id : "127"
             },
             {
                 name : "Rapat Tim IT",
                 date : "2024-03-25T09:00:00",
-                status : "finished"
+                status : "finished",
+                id : "128"
             },
             {
                 name : "Rapat Tim IT",
                 date : "2024-03-25T09:00:00",
-                status : "finished"
+                status : "finished",
+                id : "129"
             }
           ]}/>
         </TabPanels>
