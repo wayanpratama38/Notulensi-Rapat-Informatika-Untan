@@ -58,10 +58,8 @@ export default function RootLayout({ children }) {
 
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body>
-        <SidebarProvider>
-          <MainLayout>{children}</MainLayout>
-        </SidebarProvider>
+      <body className="dark:bg-gray-900">
+        <SidebarProvider>{children}</SidebarProvider>
       </body>
     </html>
   );
