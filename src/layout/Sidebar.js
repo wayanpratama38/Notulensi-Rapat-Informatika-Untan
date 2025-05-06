@@ -21,7 +21,7 @@ const navItems = [
     },
     {
         icon : <UserIcon />,
-        name : "User Profile",
+        name : "Profile",
         path : "/profile"
     }
 ]

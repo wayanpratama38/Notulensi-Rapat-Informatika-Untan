@@ -44,3 +44,35 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+.custom-calendar .fc-h-event {
+  background-color: transparent;
+  border: none;
+  color: black;
+}
+
+.event-fc-color {
+  @apply rounded-lg py-2.5 pl-4 pr-3;
+}
+
+.fc-daygrid-event-dot {
+  @apply w-1 h-5 ml-0 mr-3 border-none rounded-sm;
+}
+
+.fc-event-title {
+  @apply p-0 text-sm font-normal text-gray-700;
+}
+
+@utility custom-scrollbar {
+  &::-webkit-scrollbar {
+    @apply size-1.5;
+  }
+
+  &::-webkit-scrollbar-track {
+    @apply rounded-full;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    @apply bg-gray-200 rounded-full dark:bg-gray-700;
+  }
+}
