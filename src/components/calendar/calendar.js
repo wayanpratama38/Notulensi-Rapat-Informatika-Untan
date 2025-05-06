@@ -83,7 +83,7 @@ const Calendar = () => {
                 title : eventTitle,
                 start : eventStartDate,
                 end : eventEndDate,
-                allDat : true
+                allDay : true
             };
             setEvents((prevEvents) => [...prevEvents, newEvent]);
         }
@@ -102,7 +102,7 @@ const Calendar = () => {
 
     return (
         <div className="rounded-2x1 border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-            <div className="custom-calender">
+            <div className="custom-calendar">
                 <FullCalendar
                     ref={calendarRef}
                     plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -223,7 +223,7 @@ const Calendar = () => {
 }
 
 const renderEventContent = (eventInfo) => {
-    const colorClass = `bg-green:500`;
+    const colorClass = `bg-green-500`;
     return (
       <div
         className={`event-fc-color flex fc-event-main ${colorClass} p-1 rounded-sm`}

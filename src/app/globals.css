@@ -36,6 +36,7 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
 .no-scrollbar::-webkit-scrollbar{
   display: none;
 }
@@ -45,34 +46,55 @@ body {
   scrollbar-width: none;
 }
 
-.custom-calendar .fc-h-event {
+.custom-calendar .fc-h-event{
   background-color: transparent;
   border: none;
   color: black;
 }
 
 .event-fc-color {
-  @apply rounded-lg py-2.5 pl-4 pr-3;
+  padding: 0 0.625rem;
+  border-radius: 0.5rem;
+  padding-left: 1rem;
+  padding-right: 0.75rem;
 }
 
 .fc-daygrid-event-dot {
-  @apply w-1 h-5 ml-0 mr-3 border-none rounded-sm;
+  width: 0.25rem;
+  height: 1.25rem;
+  margin-left: 0rem;
+  margin-right: 0.75rem;
+  border: none;
+  border-radius: 0.125rem;
 }
 
 .fc-event-title {
-  @apply p-0 text-sm font-normal text-gray-700;
+  padding: 0;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+  --tw-text-opacity: 1;
+  color: rgba(55, 65, 81, var(--tw-text-opacity));
 }
 
-@utility custom-scrollbar {
-  &::-webkit-scrollbar {
-    @apply size-1.5;
-  }
+/* global.css */
 
-  &::-webkit-scrollbar-track {
-    @apply rounded-full;
-  }
+.custom-scrollbar::-webkit-scrollbar {
+  width: 0.375rem; /* ukuran setara dengan size-1.5 (6px) */
+  height: 0.375rem;
+}
 
-  &::-webkit-scrollbar-thumb {
-    @apply bg-gray-200 rounded-full dark:bg-gray-700;
+.custom-scrollbar::-webkit-scrollbar-track {
+  border-radius: 9999px; /* rounded-full */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #e5e7eb; /* bg-gray-200 */
+  border-radius: 9999px;     /* rounded-full */
+}
+
+@media (prefers-color-scheme: dark) {
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #374151; /* dark:bg-gray-700 */
   }
 }
