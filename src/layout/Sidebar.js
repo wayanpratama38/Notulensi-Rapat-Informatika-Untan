@@ -3,7 +3,6 @@ import { usePathname } from "next/navigation";
 import {
     CalendarIcon,
     DashboardIcon,
-    UserIcon,
 } from "../icons/index";
 import { useCallback, useEffect } from "react";
 import Link from "next/link";
@@ -12,18 +11,13 @@ const navItems = [
     {
         icon : <DashboardIcon />,
         name : "Dashboard",
-        path : "/"
+        path : "/dashboard"
     },
     {
         icon : <CalendarIcon />,
         name : "Calendar",
         path : "/calendar"
     },
-    {
-        icon : <UserIcon />,
-        name : "Profile",
-        path : "/profile"
-    }
 ]
 
 
@@ -54,7 +48,11 @@ const AppSidebar = () => {
                                 {nav.icon}
                             </span>
                             {(isExpanded || isHovered || isMobileOpen) && (
-                                <span className={`menu-item-text text-white`}>{nav.name}</span>
+                                <span className={`menu-item-text ${
+                                    isActive(nav.path)
+                                    ? 'text-brand-500 dark:text-brand-400'
+                                    : 'text-gray-700 dark:text-gray-300'
+                                }`}>{nav.name}</span>
                             )}
                         </Link>
                     )}

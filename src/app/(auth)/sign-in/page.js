@@ -7,5 +7,9 @@ import { redirect } from "next/navigation";
 
 export default async function Page() {
     const session = await auth();
-    return session ? redirect("/dashboard"):(<SignInCard/>)
+    if (session) {
+        redirect("/dashboard");
+    }
+
+    return <SignInCard/>
 }
