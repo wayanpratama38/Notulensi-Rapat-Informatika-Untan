@@ -14,36 +14,31 @@ import { useModal } from "@/hooks/useModal";
 import { Modal } from "@/components/ui/modal";
 
 
+const participant = ["Adit","una","kevin"]
+
 
 const Calendar = () => {
     const [selectedEvent, setSelectedEvent] = useState(null);
+    //  event title dan agenda
     const [eventTitle, setEventTitle] = useState("");
     const [eventAgenda, setEventAgenda] = useState("");
+    // event date + time
     const [eventStartDate, setEventStartDate] = useState("");
     const [eventEndDate, setEventEndDate] = useState("");
+    const [startTime, setStartTime] = useState("");
+    const [endTime, setEndTime] = useState("");
     const [eventLevel, setEventLevel] = useState("");
+    // event participant
+    const [selectedParticipant, setSelectedParticipant] = useState([]);
+    const [participantList, setParticipantList] = useState(participant)
+    const [selectedPlaceholder,setSelectedPlaceholder] = useState("");
+    // array event
     const [events, setEvents] = useState([]);
     const calendarRef = useRef(null);
     const { isOpen, openModal, closeModal } = useModal();
 
     useEffect(() => {
         setEvents([
-            {
-                id:"1",
-                title : "Rapat Teknik",
-                start : new Date().toISOString().split("T")[0],
-            },
-            {
-                id : "2",
-                title : "Meeting",
-                start : new Date(Date.now() + 864000000).toISOString().split("T")[0]
-            },
-            {
-                id : "3",
-                title : "Workshop",
-                start : new Date(Date.now() + 172800000).toISOString().split("T")[0],
-                end : new Date(Date.now() + 259200000).toISOString().split("T")[0]
-            }
         ])
     },[]);
 
@@ -63,7 +58,27 @@ const Calendar = () => {
         openModal();
     }
 
+    const handleParticipantSelect = (event) => {
+        const selected = event.target.value;
+        if(selected && !selectedParticipant.includes(selected)){
+            setSelectedParticipant((prevParticipants)=>[...prevParticipants,selected])
+            setParticipantList((prevList)=> prevList.filter((participant)=> participant !== selected));
+            setSelectedPlaceholder("");
+        }
+    }
+
+    const handleRemoveParticipant = (participant) => {
+        setSelectedParticipant((prevParticipants) =>
+            prevParticipants.filter((p) => p!== participant)
+        );
+
+        setParticipantList((prevList)=>[...prevList,participant]);
+    };
+
     const handleAddOrUpdateEvent = () => {
+        const fullStartDate = `${eventStartDate}T${startTime}:00`;  // Menggabungkan tanggal dan waktu mulai
+        const fullEndDate = `${eventEndDate}T${endTime}:00`;  // Menggabungkan tanggal dan waktu berakhir
+        
         if (selectedEvent) { 
             setEvents((prevEvents) =>
                 prevEvents.map((event) =>
@@ -71,8 +86,9 @@ const Calendar = () => {
                     ?   {
                             ...event,
                             title : eventTitle,
-                            start : eventStartDate,
-                            end : eventEndDate,
+                            start : fullStartDate,
+                            end : fullEndDate,
+                            participants : selectedParticipant
                         }
                     : event
                 )
@@ -81,9 +97,10 @@ const Calendar = () => {
             const newEvent = {
                 id : Date.now().toString(),
                 title : eventTitle,
-                start : eventStartDate,
-                end : eventEndDate,
-                allDay : true
+                start : fullStartDate,
+                end : fullEndDate,
+                participants : selectedParticipant,
+                allDay : false
             };
             setEvents((prevEvents) => [...prevEvents, newEvent]);
         }
@@ -97,6 +114,10 @@ const Calendar = () => {
         setEventAgenda("");
         setEventEndDate("");
         setEventLevel("");
+        setStartTime("");
+        setEndTime("");
+        setSelectedParticipant([]);
+        setParticipantList(participant)
         setSelectedEvent(null);
     };
 
@@ -111,6 +132,11 @@ const Calendar = () => {
                         left : "prev,next addEventButton",
                         center : "title",
                         right : "dayGridMonth,timeGridWeek,timeGridDay"
+                    }}
+                    buttonText={{
+                        dayGridMonth : "Bulan",
+                        timeGridWeek : "Minggu",
+                        timeGridDay : "Hari"
                     }}
                     events = {events}
                     selectable = {true}
@@ -172,29 +198,88 @@ const Calendar = () => {
                             </div>
                             <div className="mt-6">
                                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                                    Enter Start Date
+                                    Participants
                                 </label>
-                                <div className="relative">
-                                    <input
-                                        id="event-start-date"
-                                        type="date"
-                                        value={eventStartDate}
-                                        onChange={(e) => setEventStartDate(e.target.value)}
-                                        className="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent bg-none px-4 py-2.5 pl-4 pr-11 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-                                />
+                                <select
+                                    onChange={handleParticipantSelect}
+                                    value={selectedPlaceholder}
+                                    className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:ring-3 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
+                                >
+                                    <option value="">Select Participant</option>
+                                    {participantList.map((participant, index) => (
+                                        <option key={index} value={participant}>{participant}</option>
+                                    ))}
+                                </select>
+                                <div className="mt-4">
+                                    {selectedParticipant.map((participant, index) => (
+                                        <div
+                                            key={index}
+                                            className="inline-flex items-center space-x-2 py-1 px-3 m-1 bg-blue-500 text-white rounded-full"
+                                        >
+                                            <span>{participant}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveParticipant(participant)}
+                                                className="text-white font-bold"
+                                            >
+                                                &times;
+                                            </button>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
-                            <div className="mt-6">
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                                    Enter End Date
-                                </label>
-                                <div className="relative">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="mt-6">
+                                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                                        Enter Start Date
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            id="event-start-date"
+                                            type="date"
+                                            value={eventStartDate}
+                                            onChange={(e) => setEventStartDate(e.target.value)}
+                                            className="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent bg-none px-4 py-2.5 pl-4 pr-11 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                                    />
+                                    </div>
+                                </div>
+                                <div className="mt-6">
+                                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                                        Enter End Date
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            id="event-end-date"
+                                            type="date"
+                                            value={eventEndDate}
+                                            onChange={(e) => setEventEndDate(e.target.value)}
+                                            className="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent bg-none px-4 py-2.5 pl-4 pr-11 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="mt-6">
+                                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                                        Start Time
+                                    </label>
                                     <input
-                                        id="event-end-date"
-                                        type="date"
-                                        value={eventEndDate}
-                                        onChange={(e) => setEventEndDate(e.target.value)}
-                                        className="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent bg-none px-4 py-2.5 pl-4 pr-11 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                                        type="time"
+                                        value={startTime}
+                                        onChange={(e) => setStartTime(e.target.value)}
+                                        className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:ring-3 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
+                                    />
+                                </div>
+
+                                <div className="mt-6">
+                                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                                        End Time
+                                    </label>
+                                    <input
+                                        type="time"
+                                        value={endTime}
+                                        onChange={(e) => setEndTime(e.target.value)}
+                                        className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:ring-3 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
                                     />
                                 </div>
                             </div>
