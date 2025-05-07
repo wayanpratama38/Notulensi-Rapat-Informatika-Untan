@@ -9,10 +9,14 @@ const outfit = Outfit({
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body className={`${outfit.className} bg-gray-50 dark:bg-gray-900`}>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${outfit.className} bg-gray-50 dark:bg-gray-900 transition-colors duration-200`}>
         <ThemeProvider>
-          <SidebarProvider>{children}</SidebarProvider>
+          <SidebarProvider>
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+              {children}
+            </div>
+          </SidebarProvider>
         </ThemeProvider>
       </body>
     </html>
