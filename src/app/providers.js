@@ -5,7 +5,7 @@ import { ThemeProvider } from "@/context/ThemeContext";
 import { HeroUIProvider } from "@heroui/react";
 
 export function Providers({ children }) {
-    console.log("Root rendering (Server)"); // Add a log
+    console.log("Root rendering (Server)"); 
   return (
     <HeroUIProvider>
       
