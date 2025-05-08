@@ -204,98 +204,6 @@
   --z-index-999999: 999999;
 }
 
-:root.dark {
-  /* --- Palet Warna Dasar (Dark Mode Override) --- */
-  /* Brand Colors (Dark Mode - Sesuaikan jika perlu kontras berbeda) */
-  --color-brand-25: #161950;
-  --color-brand-50: #262e89; /* Lebih gelap untuk background subtle di dark mode */
-  --color-brand-100: #252dae;
-  --color-brand-200: #2a31d8;
-  --color-brand-300: #3641f5;
-  --color-brand-400: #465fff;
-  --color-brand-500: #7592ff; /* Brand utama jadi lebih terang untuk kontras */
-  --color-brand-600: #9cb9ff; /* Hover jadi lebih terang lagi */
-  --color-brand-700: #c2d6ff;
-  --color-brand-800: #dde9ff;
-  --color-brand-900: #ecf3ff;
-  --color-brand-950: #f2f7ff;
-
-  /* Gray Colors (Dark Mode - Umumnya dibalik atau disesuaikan) */
-  --color-gray-25: #0c111d;
-  --color-gray-50: #101828;
-  --color-gray-100: #1d2939;
-  --color-gray-200: #344054;
-  --color-gray-300: #475467;
-  --color-gray-400: #667085;
-  --color-gray-500: #98a2b3;
-  --color-gray-600: #d0d5dd;
-  --color-gray-700: #e4e7ec;
-  --color-gray-800: #f2f4f7;
-  --color-gray-900: #f9fafb;
-  --color-gray-950: #fcfcfd;
-
-  /* Orange, Success, Error, Warning (Dark Mode - Sesuaikan untuk kontras) */
-  --color-orange-50: #511c10;
-  --color-orange-500: #fd853a; /* Lebih terang */
-  --color-success-50: #053321;
-  --color-success-500: #32d583; /* Lebih terang */
-  --color-error-50: #55160c;
-  --color-error-500: #f97066; /* Lebih terang */
-  --color-warning-50: #4e1d09;
-  --color-warning-500: #fdb022; /* Lebih terang */
-
-  /* Theme Specific Colors (Dark Mode) */
-  --color-theme-pink-500: #f472b6;
-  --color-theme-purple-500: #a78bfa;
-
-  /* --- Variabel Warna Semantik (Dark Mode Override) --- */
-  --color-text-primary: var(--color-gray-50);
-  --color-text-secondary: var(--color-gray-300);
-  --color-text-tertiary: var(--color-gray-400);
-  --color-text-disabled: var(--color-gray-500);
-  --color-text-on-brand: var(--color-white); /* Jika brand-500 dark terang, teks bisa gelap */
-  --color-text-on-dark-bg: var(--color-white);
-  --color-text-link: var(--color-brand-400);
-  --color-text-placeholder: var(--color-gray-500);
-  --color-text-error: var(--color-error-400);
-  --color-text-success: var(--color-success-400);
-  --color-text-warning: var(--color-warning-400);
-
-  --color-background-body: var(--color-gray-900);
-  --color-background-primary: var(--color-gray-800);
-  --color-background-secondary: var(--color-gray-700);
-  --color-background-tertiary: var(--color-gray-600);
-  --color-background-brand: var(--color-brand-500); /* Menggunakan brand-500 yang sudah di-override */
-  --color-background-brand-hover: var(--color-brand-600); /* Menggunakan brand-600 yang sudah di-override */
-  --color-background-brand-subtle: rgba(var(--shadow-focus-ring-color-rgb), 0.12); /* Gunakan RGB dari brand-500 terang */
-  --color-background-overlay: rgba(0, 0, 0, 0.7);
-
-  --color-border-default: var(--color-gray-700);
-  --color-border-strong: var(--color-gray-600);
-  --color-border-subtle: var(--color-gray-800);
-  --color-border-brand: var(--color-brand-500);
-  --color-border-focus: var(--color-brand-400);
-
-  /* Shadow (Dark Mode) */
-  --shadow-color-rgb: 0, 0, 0; /* Atau 255, 255, 255 jika shadow terang di bg gelap */
-  --shadow-theme-md:
-    0px 4px 8px -2px rgba(var(--shadow-color-rgb), 0.25), /* Alpha lebih tinggi */
-    0px 2px 4px -2px rgba(var(--shadow-color-rgb), 0.2);
-  --shadow-theme-lg:
-    0px 12px 16px -4px rgba(var(--shadow-color-rgb), 0.2),
-    0px 4px 6px -2px rgba(var(--shadow-color-rgb), 0.15);
-  --shadow-theme-sm:
-    0px 1px 3px 0px rgba(var(--shadow-color-rgb), 0.25),
-    0px 1px 2px 0px rgba(var(--shadow-color-rgb), 0.2);
-  --shadow-theme-xs: 0px 1px 2px 0px rgba(var(--shadow-color-rgb), 0.2);
-  --shadow-theme-xl: /* Khusus untuk dark flatpickr */
-    0px 20px 24px -4px rgba(var(--shadow-color-rgb), 0.25),
-    0px 8px 8px -4px rgba(var(--shadow-color-rgb), 0.2);
-  --shadow-datepicker-dark: -5px 0 0 #262d3c, 5px 0 0 #262d3c; /* Sesuai definisi awal Anda */
-  --shadow-focus-ring-color-rgb: 117, 146, 255; /* RGB dari brand-500 dark */
-  --shadow-focus-ring: 0px 0px 0px 4px rgba(var(--shadow-focus-ring-color-rgb), 0.25);
-}
-
 /* --- Base Styles (Menggunakan Variabel Semantik) --- */
 *,
 ::after,
@@ -662,7 +570,7 @@ span.flatpickr-weekday, .flatpickr-months .flatpickr-month { background: none !i
 .fc-theme-standard th {
   border-left-width: 0 !important; border-right-width: 0 !important;
   border-top: 1px solid var(--color-border-default) !important;
-  background-color: var(--color-background-secondary) !important; text-align: left !important;
+  background-color: var(--color-background-primary) !important; text-align: left !important;
 }
 .fc-theme-standard td, .fc-theme-standard .fc-scrollgrid { border-color: var(--color-border-default) !important; }
 .fc .fc-col-header-cell-cushion {
@@ -670,7 +578,7 @@ span.flatpickr-weekday, .flatpickr-months .flatpickr-month { background: none !i
   line-height: 1.25rem !important; font-weight: 500 !important;
   text-transform: uppercase !important; color: var(--color-text-tertiary) !important;
 }
-.fc .fc-daygrid-day.fc-day-today { background-color: transparent !important; }
+.fc .fc-daygrid-day.fc-day-today { background-color: var(--color-background-body) !important; }
 .fc .fc-daygrid-day { padding: 0.5rem !important; }
 .fc .fc-daygrid-day.fc-day-today .fc-scrollgrid-sync-inner {
   border-radius: 0.25rem !important; background-color: var(--color-background-secondary) !important;
@@ -717,7 +625,7 @@ span.flatpickr-weekday, .flatpickr-months .flatpickr-month { background: none !i
   border-color: var(--color-error-800) !important; background-color: var(--color-error-900) !important;
 }
 .event-fc-color.fc-bg-primary {
-  border-color: var(--color-brand-100) !important; background-color: var(--color-brand-50) !important;
+  border-color: var(--color-brand-100) !important; background-color: var(--color-brand-300) !important;
 }
 .dark .event-fc-color.fc-bg-primary {
   border-color: var(--color-brand-800) !important; background-color: var(--color-brand-900) !important;
@@ -747,7 +655,7 @@ span.flatpickr-weekday, .flatpickr-months .flatpickr-month { background: none !i
   font-size: 0.875rem !important; line-height: 1.25rem !important; font-weight: 500 !important;
   color: var(--color-text-tertiary) !important;
 }
-.custom-calendar .fc-h-event { background-color: transparent; border: none; color: var(--color-text-primary); }
+.custom-calendar .fc-h-event { background-color: fill; border: none; color: var(--color-text-primary); }
 .fc.fc-media-screen { min-height: 100vh !important; }
 
 .input-date-icon::-webkit-inner-spin-button,
@@ -865,3 +773,276 @@ span.flatpickr-weekday, .flatpickr-months .flatpickr-month { background: none !i
   opacity: 0.8;
   cursor: grabbing;
 }
+
+
+
+/* Table */
+
+/* --- Global Styles for Data Table Container --- */
+.data-table-container {
+  font-family: var(--font-outfit, sans-serif);
+  color: var(--color-text-primary);
+  background-color: var(--color-background-primary); /* Latar belakang kontainer/kartu */
+  padding: 20px; /* Sesuaikan jika perlu */
+  border-radius: 8px; /* Atau variabel radius Anda jika ada */
+  box-shadow: var(--shadow-theme-md);
+  transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* --- Top Controls (Filter Input & Columns Button) --- */
+.data-table-container .top-controls {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.data-table-container .top-controls input[type="text"] {
+  flex-grow: 1;
+  padding: 10px 14px;
+  border: 1px solid var(--color-border-default);
+  border-radius: 6px; /* Atau variabel radius Anda */
+  font-size: var(--text-theme-sm, 14px);
+  line-height: var(--text-theme-sm--line-height, 20px);
+  background-color: var(--color-background-primary); /* Bisa juga var(--color-white) untuk light, dan var(--color-gray-700) untuk dark jika berbeda dari primary bg */
+  color: var(--color-text-primary);
+  box-sizing: border-box;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+}
+.data-table-container .top-controls input[type="text"]::placeholder {
+  color: var(--color-text-placeholder);
+}
+.data-table-container .top-controls input[type="text"]:focus {
+  outline: none;
+  border-color: var(--color-border-focus);
+  box-shadow: var(--shadow-focus-ring);
+}
+
+/* --- General Button Styling --- */
+.data-table-container button {
+  padding: 9px 16px; /* Sesuaikan padding dengan desain Anda */
+  border: 1px solid var(--color-border-default);
+  border-radius: 6px; /* Atau variabel radius Anda */
+  background-color: var(--color-background-primary); /* Atau var(--color-gray-50) light, var(--color-gray-700) dark */
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: var(--text-theme-sm, 14px);
+  font-weight: 500; /* Atau variabel font-weight Anda */
+  line-height: var(--text-theme-sm--line-height, 1.5);
+  transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out, color 0.15s ease-in-out;
+}
+.data-table-container button:hover {
+  background-color: var(--color-background-secondary);
+  border-color: var(--color-border-strong);
+  color: var(--color-text-primary);
+}
+.data-table-container button:focus-visible {
+  outline: none;
+  border-color: var(--color-border-focus);
+  box-shadow: var(--shadow-focus-ring);
+}
+.data-table-container button:disabled {
+  opacity: 0.65; /* Atau gunakan var(--color-text-disabled) untuk color dan var(--color-background-tertiary) untuk bg */
+  cursor: not-allowed;
+  background-color: var(--color-background-tertiary);
+  border-color: var(--color-border-default);
+  color: var(--color-text-disabled);
+}
+.data-table-container button span {
+  margin-left: 6px;
+}
+
+/* --- Table Styling --- */
+.data-table-container .table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--color-border-default);
+  border-radius: 6px; /* Atau variabel radius Anda */
+  background-color: var(--color-background-primary); /* Pastikan table bg konsisten */
+}
+.data-table-container table {
+  width: 100%;
+  border-collapse: collapse; /* Atau 'separate' dengan border-spacing jika desain berbeda */
+  font-size: var(--text-theme-sm, 14px);
+}
+.data-table-container th,
+.data-table-container td {
+  padding: 12px 15px;
+  border-bottom: 1px solid var(--color-border-default);
+  text-align: left;
+  vertical-align: middle;
+  line-height: var(--text-theme-sm--line-height, 1.5);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+.data-table-container th {
+  background-color: var(--color-background-secondary);
+  font-weight: 600; /* Atau variabel font-weight Anda */
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.data-table-container tbody tr:last-child td {
+  border-bottom: none;
+}
+.data-table-container tbody tr:hover {
+  background-color: var(--color-background-secondary); /* Atau var(--color-gray-50) light, var(--color-gray-700) dark */
+}
+.data-table-container tbody tr[data-state="selected"] {
+  background-color: var(--color-background-brand-subtle);
+}
+.data-table-container tbody tr[data-state="selected"]:hover {
+  /* Mungkin sedikit lebih gelap/terang dari brand-subtle */
+  background-color: var(--color-brand-100); /* Contoh, sesuaikan */
+}
+.dark .data-table-container tbody tr[data-state="selected"]:hover {
+  background-color: var(--color-brand-700); /* Contoh untuk dark, sesuaikan */
+}
+
+
+/* Checkbox styling */
+.data-table-container input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  vertical-align: middle;
+  border: 1px solid var(--color-border-strong); /* Atau var(--color-gray-300) light, var(--color-gray-600) dark */
+  border-radius: 3px;
+  cursor: pointer;
+  accent-color: var(--color-brand-500); /* Untuk browser modern, mewarnai bagian checked */
+  background-color: var(--color-background-primary); /* Untuk tema yang tidak mendukung accent-color atau untuk indeterminate */
+  transition: border-color 0.3s ease, background-color 0.3s ease;
+}
+/* Untuk browser yang tidak sepenuhnya mendukung accent-color atau untuk kustomisasi lebih lanjut: */
+.data-table-container input[type="checkbox"]:checked {
+  background-color: var(--color-brand-500);
+  border-color: var(--color-brand-500);
+  /* Anda bisa menggunakan SVG untuk ikon centang jika ingin kontrol penuh */
+}
+.data-table-container input[type="checkbox"]:indeterminate {
+  background-color: var(--color-brand-500);
+  border-color: var(--color-brand-500);
+  /* Anda bisa menggunakan SVG untuk ikon strip jika ingin kontrol penuh */
+}
+
+
+/* Header Sort Button */
+.data-table-container .table-header-sort-button {
+  background: none;
+  border: none;
+  padding: 0;
+  font-weight: inherit;
+  color: inherit;
+  cursor: pointer;
+  font-size: inherit;
+  display: inline-flex;
+  align-items: center;
+}
+.data-table-container .table-header-sort-button:hover {
+  /* text-decoration: underline; */ /* Opsional */
+  color: var(--color-text-link); /* Atau var(--color-brand-600) */
+  background: none;
+}
+.data-table-container .table-header-sort-button span {
+  margin-left: 6px;
+}
+
+/* --- Dropdown Menu Styling --- */
+.data-table-container .dropdown-menu-content {
+  position: absolute;
+  background-color: var(--color-background-primary);
+  border: 1px solid var(--color-border-default); /* Atau var(--color-gray-300) */
+  border-radius: 6px; /* Atau variabel radius Anda */
+  box-shadow: var(--shadow-theme-lg);
+  z-index: var(--z-index-999, 999); /* Sesuaikan dengan sistem z-index Anda */
+  min-width: 180px;
+  padding: 8px 0;
+  margin-top: 4px;
+  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.data-table-container .columns-visibility-dropdown {
+  right: 0;
+}
+.data-table-container .action-menu-dropdown {
+  right: 0;
+}
+
+.data-table-container .dropdown-menu-label {
+  padding: 8px 16px;
+  font-size: var(--text-theme-xs, 12px);
+  line-height: var(--text-theme-xs--line-height, 18px);
+  font-weight: 600; /* Atau variabel font-weight Anda */
+  color: var(--color-text-tertiary);
+  display: block;
+}
+.data-table-container .dropdown-menu-content button,
+.data-table-container .dropdown-menu-checkbox-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 8px 16px;
+  font-size: var(--text-theme-sm, 14px);
+  line-height: var(--text-theme-sm--line-height, 20px);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  box-sizing: border-box;
+  border-radius: 4px; /* Radius internal item jika diinginkan */
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.data-table-container .dropdown-menu-checkbox-item {
+  display: flex;
+  align-items: center;
+}
+.data-table-container .dropdown-menu-checkbox-item input[type="checkbox"] {
+  margin-right: 10px;
+}
+
+.data-table-container .dropdown-menu-content button:hover,
+.data-table-container .dropdown-menu-checkbox-item:hover {
+  background-color: var(--color-background-secondary); /* Atau var(--color-gray-100) light, var(--color-gray-700) dark */
+  color: var(--color-text-primary); /* Pastikan kontras baik */
+}
+.data-table-container .dropdown-menu-content hr {
+  border: 0;
+  border-top: 1px solid var(--color-border-subtle); /* Atau var(--color-gray-200) light, var(--color-gray-700) dark */
+  margin: 8px 0;
+}
+
+/* Action Menu Trigger Button (...) */
+.data-table-container .action-menu-container {
+  position: relative;
+}
+.data-table-container .action-menu-trigger {
+  padding: 4px 8px;
+  background: none;
+  border-color: transparent;
+  font-weight: bold; /* Atau normal jika desain lebih subtle */
+  color: var(--color-text-tertiary);
+}
+.data-table-container .action-menu-trigger:hover {
+  background-color: var(--color-background-secondary);
+  border-color: var(--color-border-default); /* Atau transparent jika tidak mau border */
+  color: var(--color-text-secondary);
+}
+
+/* --- Pagination Controls --- */
+.data-table-container .pagination-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 16px;
+  font-size: var(--text-theme-sm, 14px);
+  color: var(--color-text-secondary);
+}
+.data-table-container .pagination-buttons {
+  display: flex;
+  gap: 8px;
+}
+/* --- No Results Cell --- */
+.data-table-container .no-results-cell {
+  padding: 40px 0;
+  text-align: center;
+  color: var(--color-text-tertiary);
+  font-style: italic;
+  background-color: var(--color-background-primary); /* Pastikan bg konsisten */
+}
+
