@@ -51,10 +51,39 @@ const Calendar = () => {
 
     const handleEventClick = (clickInfo) => {
         const event = clickInfo.event;
-        setSelectedEvent(event);
+        
+        console.log("Event clicked:", event);
+
+        // setSelectedEvent({
+        //     id: event.id,
+        //     title: event.title,
+        //     start: event.startStr || event.start.toISOString(),
+        //     end: event.endStr || event.end.toISOString(),
+        //     participants: event.extendedProps.participants || [],
+        //     agenda: event.extendedProps.agenda || ""
+        // });
+        
         setEventTitle(event.title);
-        setEventStartDate(event.start.toISOString().split("T")[0] || "");
-        setEventEndDate(event.end.toISOString().split("T")[0] || "");
+        
+        const startDate = event.start.toISOString().split('T')[0];
+        const endDate = event.end ? event.end.toISOString().split('T')[0] : startDate;
+        
+        setEventStartDate(startDate);
+        setEventEndDate(endDate);
+        
+        const startTimeStr = event.start.toISOString().split('T')[1].substring(0, 5);
+        const endTimeStr = event.end ? event.end.toISOString().split('T')[1].substring(0, 5) : startTimeStr;
+        
+        setStartTime(startTimeStr);
+        setEndTime(endTimeStr);
+        
+        const eventParticipants = event.extendedProps?.participants || [];
+        setSelectedParticipant(eventParticipants);
+    
+        setParticipantList(participant.filter(p => !eventParticipants.includes(p)));
+        
+        setEventAgenda(event.extendedProps.agenda || "");
+        
         openModal();
     }
 
@@ -88,7 +117,8 @@ const Calendar = () => {
                             title : eventTitle,
                             start : fullStartDate,
                             end : fullEndDate,
-                            participants : selectedParticipant
+                            participants : selectedParticipant,
+                            agenda : eventAgenda
                         }
                     : event
                 )
@@ -100,6 +130,7 @@ const Calendar = () => {
                 start : fullStartDate,
                 end : fullEndDate,
                 participants : selectedParticipant,
+                agenda :eventAgenda,
                 allDay : false
             };
             setEvents((prevEvents) => [...prevEvents, newEvent]);
@@ -117,7 +148,7 @@ const Calendar = () => {
         setStartTime("");
         setEndTime("");
         setSelectedParticipant([]);
-        setParticipantList(participant)
+        setParticipantList([...participant]);
         setSelectedEvent(null);
     };
 
@@ -308,13 +339,23 @@ const Calendar = () => {
 }
 
 const renderEventContent = (eventInfo) => {
-    const colorClass = `bg-green-500`;
+    console.log("RENDER EVENT CONTENT",eventInfo)
+    const {event} = eventInfo
+    const startTime = event._instance.range.start.toLocaleTimeString([],{
+        hour : '2-digit',
+        minute : '2-digit'
+    })
+
+    const endTime = event._instance.range.end.toLocaleTimeString([],{
+        hour : '2-digit',
+        minute : '2-digit'
+    })
+
+    
     return (
       <div
-        className={`event-fc-color flex fc-event-main ${colorClass} p-1 rounded-sm`}
+        className={`event-fc-color p-1 fc-event-main fc-bg-success rounded-sm flex flex-col`}
       >
-        <div className="fc-daygrid-event-dot"></div>
-        <div className="fc-event-time">{eventInfo.timeText}</div>
         <div className="fc-event-title">{eventInfo.event.title}</div>
       </div>
     );

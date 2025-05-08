@@ -693,7 +693,8 @@ span.flatpickr-weekday, .flatpickr-months .flatpickr-month { background: none !i
 }
 .event-fc-color .fc-event-title {
   padding: 0 !important; font-size: 0.875rem !important; line-height: 1.25rem !important;
-  font-weight: 400 !important; color: var(--color-text-secondary) !important;
+  font-weight: bold !important; color: var(--color-text-primary) !important;
+  text-transform: capitalize;
 }
 .fc-daygrid-event-dot {
   width: 0.25rem !important; height: 1.25rem !important; margin-left: 0 !important;
@@ -705,9 +706,9 @@ span.flatpickr-weekday, .flatpickr-months .flatpickr-month { background: none !i
 .event-fc-color.fc-bg-success {
   border-color: var(--color-success-100) !important; background-color: var(--color-success-50) !important;
 }
-.dark .event-fc-color.fc-bg-success {
+.dark .event-fc-color.fc-bg-success .fc-event-title {
   border-color: var(--color-success-800) !important; background-color: var(--color-success-900) !important;
-  /* & .fc-event-title { color: var(--color-success-200) !important; } */
+  color: var(--color-success-200) !important;
 }
 .event-fc-color.fc-bg-danger {
   border-color: var(--color-error-100) !important; background-color: var(--color-error-50) !important;
