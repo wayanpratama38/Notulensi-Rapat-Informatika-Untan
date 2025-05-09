@@ -1,0 +1,86 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid()) // ID unik (otomatis)
+  email     String   @unique // Email harus unik
+  nama      String
+  password  String // Akan menyimpan HASH password, bukan password asli
+  createdAt DateTime @default(now()) // Waktu pembuatan (otomatis)
+  updatedAt DateTime @updatedAt // Waktu update terakhir (otomatis)
+}
+
+// Model untuk Rapat
+model Meeting {
+  id             String   @id @default(cuid())
+  namaRapat      String
+  startDateTime  DateTime // Tanggal & Waktu Mulai (UTC direkomendasikan)
+  endDateTime    DateTime // Tanggal & Waktu Selesai (UTC direkomendasikan)
+  agenda         String?  @db.Text // Teks panjang untuk agenda (opsional)
+  notulensiRapat String?  @db.Text // Teks panjang untuk notulen (opsional)
+  status         Status   @default(AKTIF) // Status default saat dibuat
+
+  // Relasi Many-to-Many ke Participant melalui MeetingParticipant
+  participants MeetingParticipant[]
+  // Relasi One-to-Many ke MeetingDocument
+  documents    MeetingDocument[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Index untuk performa query
+  @@index([status])
+  @@index([startDateTime])
+}
+
+// Model untuk Peserta Rapat
+model Participant {
+  id          String               @id @default(cuid())
+  nama        String
+  email       String?              @unique // Opsional, tapi bagus jika unik
+  tandaTangan String? // Path/URL ke file gambar tanda tangan
+  meetings    MeetingParticipant[] // Relasi ke rapat yang dihadiri
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+}
+
+// Tabel Penghubung (Junction Table) untuk Meeting & Participant
+model MeetingParticipant {
+  meetingId     String
+  participantId String
+  meeting       Meeting     @relation(fields: [meetingId], references: [id], onDelete: Cascade) // Jika meeting dihapus, record ini ikut terhapus
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade) // Jika participant dihapus, record ini ikut terhapus
+
+  @@id([meetingId, participantId]) // Composite Primary Key
+}
+
+// Model untuk Dokumen/File Rapat
+model MeetingDocument {
+  id         String   @id @default(cuid())
+  meetingId  String
+  meeting    Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade) // Jika meeting dihapus, dokumennya ikut terhapus
+  namaFile   String // Nama asli file
+  pathFile   String // Path penyimpanan di server atau URL cloud storage
+  tipeFile   String // Misal: 'image/jpeg', 'application/pdf'
+  uploadedAt DateTime @default(now())
+}
+
+// Enum untuk Status Rapat
+enum Status {
+  AKTIF
+  SELESAI
+  ARSIP
+}

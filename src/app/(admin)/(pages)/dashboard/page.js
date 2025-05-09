@@ -1,5 +1,5 @@
 import PageBread from "@/components/common/PageBread";
-import { DataTableDemo } from "@/components/table/test";
+import { DataTableRapat } from "@/components/table/test";
 
 
 export const metadata = {
@@ -11,7 +11,7 @@ export default function Dashboard() {
     return(
         <div>
             <PageBread pageTitle={"Dashboard"}/>
-            <DataTableDemo />
+            <DataTableRapat />
         </div>
     )
 }
