@@ -14,13 +14,13 @@ export default function AdminLayout( {children} ) {
 
 
     return(
-        <div className="min-h-screen xl:flex">
+        <div className="h-full xl:flex oveflow-hidden">
             <AppSidebar />
             <div
-                className={`flex-1 transition-all duration-300 ease-in-out ${mainContentMargin}`}
+                className={`flex flex-1 flex-col transition-all duration-300 ease-in-out ${mainContentMargin} overflow-hidden`}
             >
-                <AppHeader/>
-                <div className="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6">{children}</div>
+                <AppHeader className="flex-shrink-0"/>
+                <div className="p-4 md:p-6 flex-1 overflow-y-auto min-h-0">{children}</div>
             </div>
         </div>
         

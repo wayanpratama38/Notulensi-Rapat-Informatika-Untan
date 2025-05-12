@@ -9,9 +9,11 @@ export const metadata = {
 
 export default function CalendarPage() {
     return(
-        <div>
-            <PageBreadcrumb pageTitle="Calendar"/>
-            <Calendar />
+        <div className="flex h-full flex-col">
+            <PageBreadcrumb pageTitle="Calendar" className="flex-shrink-0"/>
+            <div className="flex-1 min-h-0">
+                <Calendar />
+            </div>
         </div>
     )
 }

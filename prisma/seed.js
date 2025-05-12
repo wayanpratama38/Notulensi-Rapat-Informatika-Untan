@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+// import { PrismaClient } from '@prisma/client';
+const {PrismaClient} = require("@prisma/client");
 
 
 const prisma = new PrismaClient();
@@ -12,8 +13,14 @@ async function main() {
   ];
 
   for (const p of participantsData) {
-    const participant = await prisma.participant.create({
-      data: p,
+    const participant = await prisma.participant.upsert({
+      where: { email: p.email }, 
+      update: {}, 
+      create: { 
+        nama: p.nama,
+        email: p.email,
+        tandaTangan: p.tandaTangan,
+      },
     });
     console.log(`Created participant with id: ${participant.id}, name: ${participant.nama}`);
   }

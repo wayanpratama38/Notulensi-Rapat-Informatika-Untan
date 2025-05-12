@@ -8,6 +8,7 @@ import interactionPlugin from "@fullcalendar/interaction";
 import { useModal } from "@/hooks/useModal";
 import { Modal } from "@/components/ui/modal";
 import { useRouter } from 'next/navigation'; 
+import CustomTimePicker from "./custom-time-picker";
 
 
 
@@ -260,26 +261,23 @@ const Calendar = () => {
 
   return (
     
-    <div className="calendar-container rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4"> 
+    <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 flex flex-col h-full"> 
       {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">{error}</div>}
       {isLoading && <div className="text-center p-4">Loading...</div>} {}
       
-      <div className="custom-calendar"> {}
+      <div className="custom-calendar flex-1 relative min-h-0"> {}
         <FullCalendar
           key={allParticipants.length} 
           ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
           headerToolbar={{
-            left: "prev,next today addEventButton", 
+            left: "prev,next addEventButton", 
             center: "title",
-            right: "dayGridMonth,timeGridWeek,timeGridDay"
+            right: "dayGridMonth"
           }}
           buttonText={{
-            today: "Hari Ini",
             dayGridMonth: "Bulan",
-            timeGridWeek: "Minggu",
-            timeGridDay: "Hari"
           }}
           
           events={fetchCalendarEvents} 
@@ -289,7 +287,7 @@ const Calendar = () => {
           eventContent={renderEventContent}
           customButtons={{
             addEventButton: {
-              text: "+ Tambah Rapat",
+              text: "Tambah Rapat",
               click: () => {
                 resetModalFields();
                 setSelectedEvent(null);
@@ -407,29 +405,23 @@ const Calendar = () => {
               {/* Waktu Mulai & Selesai */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="start-time" className="modal-label mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                  <label htmlFor="start-time-picker" className="modal-label mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
                     Waktu Mulai <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    id="start-time"
-                    type="time"
-                    required
+                  <CustomTimePicker
+                    idPrefix="start"
                     value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                    className="modal-input h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                    onChange={setStartTime}
                   />
                 </div>
                 <div>
-                  <label htmlFor="end-time" className="modal-label mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                  <label htmlFor="end-time-picker" className="modal-label mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
                     Waktu Selesai <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    id="end-time"
-                    type="time"
-                    required
+                  <CustomTimePicker
+                    idPrefix="end"
                     value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                    className="modal-input h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                    onChange={setEndTime}
                   />
                 </div>
               </div>
@@ -464,22 +456,13 @@ const Calendar = () => {
 const renderEventContent = (eventInfo) => {
   
   const status = eventInfo.event.extendedProps.status;
-  let bgColor = 'bg-blue-500'; // Default AKTIF
+  let bgColor = 'bg-blue-500'; 
   if (status === 'SELESAI') bgColor = 'bg-green-500';
   if (status === 'ARSIP') bgColor = 'bg-gray-500';
 
   return (
     <div className={`p-1 rounded-sm text-xs text-white ${bgColor} border border-blue-600 overflow-hidden`}> {}
       <div className="fc-event-title font-semibold truncate">{eventInfo.event.title}</div>
-      {}
-      {eventInfo.view.type !== 'dayGridMonth' && (
-         <div className="text-xs opacity-90">
-           {eventInfo.event.start?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })} - 
-           {eventInfo.event.end?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
-         </div>
-      )}
-      {/* Tampilkan agenda singkat jika ada */}
-      {eventInfo.event.extendedProps.agenda && <div className="text-xs opacity-80 truncate mt-1">{eventInfo.event.extendedProps.agenda}</div>}
     </div>
   );
 };

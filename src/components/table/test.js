@@ -1,118 +1,33 @@
-"use client"; 
+"use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react"; 
+import clsx from 'clsx';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import ReactDOM from "react-dom";
 import {
   flexRender,
   getCoreRowModel,
-  getFilteredRowModel, 
+  getFilteredRowModel,
   getPaginationRowModel,
-  getSortedRowModel, 
+  getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useRouter } from 'next/navigation'; 
+import { useRouter } from 'next/navigation';
 
 import { useModal } from "@/hooks/useModal";
 import { Modal } from "@/components/ui/modal";
 
-const darkThemeColors = {
-  backgroundBody: '#171f2f',
-  backgroundPrimary: '#161B22',
-  backgroundSecondary: '#21262D',
-  backgroundTertiary: '#30363D',
-  textPrimary: '#C9D1D9',
-  textSecondary: '#8B949E',
-  textTertiary: '#586069',
-  textDisabled: '#484F58',
-  borderDefault: '#30363D',
-  borderStrong: '#21262D',
-  borderFocus: '#58A6FF',
-  brandPrimary: '#58A6FF',
-  brandPrimaryHover: '#79C0FF',
-  textOnBrand: '#0D1117',
-  rowSelectedBg: '#2D4F7C',
-  rowSelectedText: '#C9D1D9',
-};
-
-const inputBaseStyle = {
-  padding: '8px 12px',
-  backgroundColor: darkThemeColors.backgroundSecondary,
-  color: darkThemeColors.textPrimary,
-  borderWidth: '1px', 
-  borderStyle: 'solid', 
-  borderColor: darkThemeColors.borderDefault, 
-  borderRadius: '6px',
-  fontSize: '14px',
-  outline: 'none',
-  transition: 'border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
-};
-
-const selectArrowSvg = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='${encodeURIComponent(darkThemeColors.textSecondary)}'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd' /%3E%3C/svg%3E")`;
-
-const selectStyle = {
-  ...inputBaseStyle, 
-  WebkitAppearance: 'none',
-  MozAppearance: 'none',
-  appearance: 'none',
-  paddingRight: '36px',
-  backgroundImage: selectArrowSvg,
-  backgroundRepeat: 'no-repeat',
-  backgroundPosition: `right 10px center`,
-  backgroundSize: '16px 16px',
-  cursor: 'pointer',
-};
-
-const buttonBaseSharedStyle = { 
-  padding: '8px 16px',
-  borderRadius: '6px',
-  cursor: 'pointer',
-  fontSize: '14px',
-  fontWeight: '500',
-  transition: 'background-color 0.15s ease-in-out, border-color 0.15s ease-in-out',
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  whiteSpace: 'nowrap',
-  borderWidth: '1px',
-  borderStyle: 'solid',
-};
-
-const buttonStyle = {
-  ...buttonBaseSharedStyle,
-  backgroundColor: darkThemeColors.backgroundSecondary,
-  color: darkThemeColors.textPrimary,
-  borderColor: darkThemeColors.borderDefault,
-};
-
-const buttonHoverStyle = { 
-  backgroundColor: darkThemeColors.backgroundTertiary,
-  borderColor: darkThemeColors.borderFocus,
-};
-
-const buttonDisabledStyle = {
-  ...buttonBaseSharedStyle,
-  color: darkThemeColors.textDisabled,
-  backgroundColor: darkThemeColors.backgroundTertiary,
-  cursor: 'not-allowed',
-  opacity: 0.7,
-  borderColor: darkThemeColors.borderDefault,
-};
-
-
-
+// ActionCell remains the same
 const ActionCell = React.memo(({ row, activeActionMenuRowId, openActionMenu, closeActionMenu }) => {
     const isMenuOpen = activeActionMenuRowId === row.id;
     return (
-      <div style={{ position: 'relative' }}>
+      <div className="relative">
         <button
           type="button"
           id={`action-menu-button-${row.id}`}
           aria-label="Open actions menu"
-          style={{ background: 'none', border: '1px solid transparent', color: darkThemeColors.textSecondary, padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '18px', lineHeight: '1' }}
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkThemeColors.backgroundTertiary}
-          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+          className="btn-action"
           onClick={(e) => {
-            console.log(`Action button clicked. Data being sent:`, row.original);
+            // console.log(`Action button clicked. Data being sent:`, row.original);
             if (isMenuOpen) {
               closeActionMenu();
             } else {
@@ -128,85 +43,78 @@ const ActionCell = React.memo(({ row, activeActionMenuRowId, openActionMenu, clo
 ActionCell.displayName = 'ActionCell';
 
 
-export function DataTableRapat() { 
+export function DataTableRapat() {
   const router = useRouter();
-  const { isOpen, openModal, closeModal } = useModal();
+  const { isOpen, openModal, closeModal: closeModalHook } = useModal(); // Renamed to avoid conflict
 
-
-  const [tableData, setTableData] = useState([]); 
+  // State
+  const [tableData, setTableData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  
-  const [sorting, setSorting] = useState([]); 
-  const [columnFilters, setColumnFilters] = useState([]); 
+  const [sorting, setSorting] = useState([]);
+  const [columnFilters, setColumnFilters] = useState([]);
   const [columnVisibility, setColumnVisibility] = useState({});
   const [rowSelection, setRowSelection] = useState({});
-  const [pagination, setPagination] = useState({
-    pageIndex: 0, 
-    pageSize: 10, 
-  });
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
   const [pageCount, setPageCount] = useState(0);
-
-  
-  const [activeActionMenuId, setActiveActionMenuId] = useState(null); 
+  const [activeActionMenuId, setActiveActionMenuId] = useState(null);
   const [isColumnToggleMenuVisible, setIsColumnToggleMenuVisible] = useState(false);
   const [menuPosition, setMenuPosition] = useState(null);
-  const [activeRapatForMenu, setActiveRapatForMenu] = useState(null); 
-  const [rapatUntukModal, setRapatUntukModal] = useState(null); 
-
-  
-  const [notulensiInput, setNotulensiInput] = useState(""); 
+  const [activeRapatForMenu, setActiveRapatForMenu] = useState(null);
+  const [rapatUntukModal, setRapatUntukModal] = useState(null);
+  const [notulensiInput, setNotulensiInput] = useState("");
   const [filesToUpload, setFilesToUpload] = useState([]);
-  const [isSubmitting, setIsSubmitting] = useState(false); 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // NEW state for bulk actions
+  const [isBulkActionMenuVisible, setIsBulkActionMenuVisible] = useState(false);
 
 
-  
+  // Refs
+  const columnToggleButtonRef = useRef(null);
+  const columnsVisibilityDropdownRef = useRef(null);
+  const actionMenuPortalRef = useRef(null);
+  const currentActionButtonRef = useRef(null);
+  // NEW ref for bulk action menu
+  const bulkActionButtonRef = useRef(null);
+  const bulkActionMenuDropdownRef = useRef(null);
+
+
   const fetchDataRapat = useCallback(async () => {
+    // ... (fetchDataRapat remains the same)
     setIsLoading(true);
     setError(null);
-
-    
     const params = new URLSearchParams({
-      page: (pagination.pageIndex + 1).toString(), 
+      page: (pagination.pageIndex + 1).toString(),
       limit: pagination.pageSize.toString(),
     });
-
-    
     columnFilters.forEach(filter => {
       if (filter.value) {
          if (filter.id === 'namaRapat') {
             params.append('searchNamaRapat', filter.value);
          } else {
-             params.append(filter.id, filter.value); 
+             params.append(filter.id, filter.value);
          }
       }
     });
-
-    
     if (sorting.length > 0) {
       params.append('sortBy', sorting[0].id);
       params.append('order', sorting[0].desc ? 'desc' : 'asc');
     }
-
     try {
       const response = await fetch(`/api/meetings?${params.toString()}`);
-
       if (response.status === 401) {
         setError("Sesi tidak valid. Silakan login kembali.");
-        router.push('/sign-in'); 
+        router.push('/sign-in');
         return;
       }
-
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || `Gagal mengambil data: ${response.status}`);
       }
-
       const result = await response.json();
       setTableData(result.data || []);
-      setPageCount(result.totalPages || 0); 
-
+      setPageCount(result.totalPages || 0);
     } catch (err) {
       console.error("Fetch data error:", err);
       setError(err.message);
@@ -215,466 +123,496 @@ export function DataTableRapat() {
     } finally {
       setIsLoading(false);
     }
-  }, [pagination.pageIndex, pagination.pageSize, columnFilters, sorting, router]); 
+  }, [pagination.pageIndex, pagination.pageSize, columnFilters, sorting, router]);
 
-  
   useEffect(() => {
     fetchDataRapat();
-  }, [fetchDataRapat]); 
+  }, [fetchDataRapat]);
 
 
-  
-
+  // Menus close/open
   const closeActionMenu = useCallback(() => {
     setActiveActionMenuId(null);
     setActiveRapatForMenu(null);
     setMenuPosition(null);
+    currentActionButtonRef.current = null;
   }, []);
 
-  
-  const openActionMenu = useCallback((rapatData, targetElement) => {
-    
-
-  
-
-    const actualRapatData = rapatData.original;
-  
-    console.log("openActionMenu called with actual data:", actualRapatData);
+  const openActionMenu = useCallback((row, targetElement) => {
+    const actualRapatData = row.original;
     if (!actualRapatData || !targetElement) {
         console.error("Missing actualRapatData or targetElement in openActionMenu");
         return;
     }
-
     const rect = targetElement.getBoundingClientRect();
     const topPos = rect.bottom + window.scrollY + 4;
     const leftPos = rect.left + window.scrollX;
-
-    console.log("Calculating position:", {  });
-
-    
     setActiveActionMenuId(actualRapatData?.id || null);
-    setActiveRapatForMenu(actualRapatData); 
+    setActiveRapatForMenu(actualRapatData);
     setMenuPosition({ top: topPos, left: leftPos });
-
-    console.log("Menu state updated:", { id: actualRapatData?.id, pos: { top: topPos, left: leftPos } });
+    currentActionButtonRef.current = targetElement;
   }, []);
 
+  const closeBulkActionMenu = useCallback(() => {
+    setIsBulkActionMenuVisible(false);
+  }, []);
+
+  // Modal close
+  const closeModal = useCallback(() => {
+    closeModalHook();
+    setRapatUntukModal(null); // Clear modal-specific data
+    setNotulensiInput("");
+    setFilesToUpload([]);
+    setError(null); // Clear modal-specific errors
+  }, [closeModalHook]);
+
+
+  // ... (handleLengkapiDokumenClick, handleFileChange, handleSimpanDokumen, handleDeleteRapat, handleDownloadLaporan remain the same)
+  // Ensure they use the new `closeModal` if they were closing the modal.
   const handleLengkapiDokumenClick = useCallback((rapatData) => {
-    
-    console.log("Data untuk modal Lengkapi Dokumen:", rapatData);
     setRapatUntukModal(rapatData);
-    setNotulensiInput(""); 
-    setFilesToUpload([]); 
-    setIsSubmitting(false); 
-    openModal(); 
+    setNotulensiInput(rapatData.notulensiRapat || "");
+    setFilesToUpload([]);
+    setIsSubmitting(false);
+    openModal(); // from useModal hook
   }, [openModal]);
 
-  
   const handleFileChange = (event) => {
     if (event.target.files) {
-      
       const selectedFiles = Array.from(event.target.files).slice(0, 5);
       setFilesToUpload(selectedFiles);
     }
   };
 
-  
   const handleSimpanDokumen = useCallback(async () => {
-    if (!rapatUntukModal) {
-        alert("Tidak ada data rapat yang dipilih.");
-        return;
-    }
-    
+    if (!rapatUntukModal) return;
     if (!notulensiInput.trim() && filesToUpload.length === 0) {
-        alert("Harap isi notulensi atau unggah setidaknya satu file dokumen.");
-        return;
+      setError("Harap isi notulensi atau unggah setidaknya satu file dokumen."); // Set error for modal
+      return;
     }
-
-    setIsSubmitting(true); 
-    setError(null); 
-
+    setIsSubmitting(true);
+    setError(null);
     const formData = new FormData();
     formData.append('notulensiRapat', notulensiInput);
-    filesToUpload.forEach(file => {
-      
-      formData.append('dokumenRapat', file);
-    });
-
+    filesToUpload.forEach(file => formData.append('dokumenRapat', file));
     try {
       const response = await fetch(`/api/meetings/${rapatUntukModal.id}/complete`, {
-        method: 'POST',
-        body: formData, 
+        method: 'POST', body: formData,
       });
+      if (response.status === 401) { setError("Sesi tidak valid."); router.push('/sign-in'); return; }
+      if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || `Gagal menyimpan dokumen.`); }
+      alert(`Dokumen untuk rapat "${rapatUntukModal.namaRapat}" berhasil disimpan.`);
+      closeModal(); // Use the new closeModal
+      fetchDataRapat();
+    } catch (err) { setError(err.message); } // Set error for modal
+    finally { setIsSubmitting(false); }
+  }, [closeModal, rapatUntukModal, notulensiInput, filesToUpload, fetchDataRapat, router]);
 
-      if(response.status === 401) {
-         setError("Sesi tidak valid. Silakan login kembali.");
-         router.push('/sign-in');
-         closeModal();
-         setIsSubmitting(false);
-         return;
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Gagal menyimpan dokumen');
-      }
-
-      
-      alert(`Dokumen untuk rapat "${rapatUntukModal.namaRapat}" berhasil disimpan dan status diubah menjadi Arsip.`);
-      closeModal();
-      setRapatUntukModal(null);
-      setNotulensiInput("");
-      setFilesToUpload([]);
-      fetchDataRapat(); 
-
-    } catch (err) {
-      console.error("Simpan dokumen error:", err);
-      setError(`Gagal menyimpan: ${err.message}`); 
-      
-    } finally {
-      setIsSubmitting(false); 
-    }
-  }, [closeModal, rapatUntukModal, notulensiInput, filesToUpload, fetchDataRapat, router]); 
-
-  
-  const handleDeleteRapat = useCallback(async (meetingId, namaRapat) => {
+   const handleDeleteRapat = useCallback(async (meetingId, namaRapat) => {
       if (!meetingId) return;
       if (window.confirm(`Apakah Anda yakin ingin menghapus rapat "${namaRapat}"?`)) {
-          setIsLoading(true); 
-          setError(null);
+          setIsLoading(true); // Global loading for table
+          setError(null); // Global error for table
           try {
               const response = await fetch(`/api/meetings/${meetingId}`, { method: 'DELETE' });
-              if(response.status === 401) {
-                  setError("Sesi tidak valid. Silakan login kembali.");
-                  router.push('/sign-in');
-                  setIsLoading(false);
-                  return;
-              }
-              if (!response.ok) {
-                  const errorData = await response.json();
-                  throw new Error(errorData.message || 'Gagal menghapus rapat');
-              }
+              if(response.status === 401) { setError("Sesi tidak valid."); router.push('/sign-in'); return; }
+              if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || `Gagal menghapus rapat.`); }
               alert(`Rapat "${namaRapat}" berhasil dihapus.`);
-              fetchDataRapat(); 
-          } catch (err) {
-              console.error("Delete rapat error:", err);
-              setError(`Gagal menghapus: ${err.message}`);
-              setIsLoading(false);
-          }
+              fetchDataRapat();
+              // If this delete was part of a bulk, selection is handled by bulk handler
+          } catch (err) { setError(err.message); }
+          finally { setIsLoading(false); }
       }
-  }, [fetchDataRapat, router]); 
+  }, [fetchDataRapat, router]);
 
-  
   const handleDownloadLaporan = useCallback(async (meetingId, namaRapat) => {
      if (!meetingId) return;
-     
-     setError(null);
+     // For single download, error can be local to the action or global.
+     // Let's keep it simple and potentially show an alert.
+     // setError(null); // If you want a global error display
       try {
           const response = await fetch(`/api/meetings/${meetingId}/download-report`);
-          if (response.status === 401) {
-              setError("Sesi tidak valid. Silakan login kembali.");
-              router.push('/sign-in');
-              return;
-          }
-          if (!response.ok) {
-              const errorData = await response.json();
-              throw new Error(errorData.message || 'Gagal mengunduh laporan');
-          }
+          if (response.status === 401) { alert("Sesi tidak valid. Silakan login kembali."); router.push('/sign-in'); return; }
+          if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || `Gagal mengunduh laporan.`); }
           const blob = await response.blob();
           const url = window.URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          
           const safeName = namaRapat.replace(/[^a-zA-Z0-9]/g, '_');
           a.download = `Laporan_Rapat_${safeName}.pdf`;
           document.body.appendChild(a);
           a.click();
           a.remove();
           window.URL.revokeObjectURL(url);
-      } catch (err) {
-          console.error("Download laporan error:", err);
-          setError(`Gagal mengunduh: ${err.message}`);
-          alert(`Gagal mengunduh laporan: ${err.message}`);
-      }
-  }, [router]); 
+      } catch (err) { alert(`Error: ${err.message}`); }
+  }, [router]);
 
-
-  
+  // Columns definition (no change needed here for bulk actions)
   const columns = useMemo(() => [
      {
       id: "select",
-      header: ({ table }) => ( <input type="checkbox" style={{ accentColor: darkThemeColors.brandPrimary, backgroundColor: darkThemeColors.backgroundSecondary, borderColor: darkThemeColors.borderStrong, borderRadius: '3px', width: '16px', height: '16px' }}
-          ref={el => { if (el) { el.indeterminate = table.getIsSomePageRowsSelected() && !table.getIsAllPageRowsSelected(); } }}
-          checked={table.getIsAllPageRowsSelected()} onChange={table.getToggleAllPageRowsSelectedHandler()} aria-label="Select all" />
+      header: ({ table }) => (
+          <input type="checkbox"
+              className="accent-brand-500 bg-background-secondary border-border-strong rounded-[3px] w-4 h-4 focus:ring-offset-0 focus:ring-1 focus:ring-border-focus"
+              ref={el => { if (el) { el.indeterminate = table.getIsSomePageRowsSelected() && !table.getIsAllPageRowsSelected(); } }}
+              checked={table.getIsAllPageRowsSelected()}
+              onChange={table.getToggleAllPageRowsSelectedHandler()}
+              aria-label="Select all" />
       ),
-      cell: ({ row }) => ( <input type="checkbox" style={{ accentColor: darkThemeColors.brandPrimary, backgroundColor: darkThemeColors.backgroundSecondary, borderColor: darkThemeColors.borderStrong, borderRadius: '3px', width: '16px', height: '16px' }}
-          checked={row.getIsSelected()}
-          disabled={!row.getCanSelect()}
-          onChange={row.getToggleSelectedHandler()}
-          aria-label="Select row" />
+      cell: ({ row }) => (
+          <input type="checkbox"
+              className="accent-brand-500 bg-background-secondary border-border-strong rounded-[3px] w-4 h-4 focus:ring-offset-0 focus:ring-1 focus:ring-border-focus"
+              checked={row.getIsSelected()}
+              disabled={!row.getCanSelect()}
+              onChange={row.getToggleSelectedHandler()}
+              aria-label="Select row" />
       ),
       enableSorting: false, enableHiding: false,
     },
     {
       accessorKey: "namaRapat",
-      header: ({ column }) => ( <button type="button" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontWeight: '600', color: darkThemeColors.textPrimary, display: 'inline-flex', alignItems: 'center' }}
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}> Nama Rapat <span style={{ marginLeft: '6px' }}>{column.getIsSorted() ? (column.getIsSorted() === "asc" ? '🔼' : '🔽') : '↕️'}</span> </button>
+      header: ({ column }) => (
+          <button type="button"
+            className="bg-transparent border-none p-0 cursor-pointer font-semibold text-text-primary inline-flex items-center hover:text-text-link"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+              Nama Rapat
+              <span className="ml-1.5 w-4 h-4 inline-flex items-center justify-center">
+                 {column.getIsSorted() ? (column.getIsSorted() === "asc" ? '🔼' : '🔽') : '↕️'}
+              </span>
+          </button>
       ),
-      cell: ({ row }) => <div style={{ color: darkThemeColors.textSecondary }}>{row.getValue("namaRapat")}</div>,
-      enableColumnFilter: true, 
+      cell: ({ row }) => <div className="text-text-secondary">{row.getValue("namaRapat")}</div>,
+      enableColumnFilter: true,
     },
     {
-      
       accessorKey: "startDateTime",
-      header: ({ column }) => ( <button type="button" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontWeight: '600', color: darkThemeColors.textPrimary, display: 'inline-flex', alignItems: 'center' }}
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}> Tanggal Rapat <span style={{ marginLeft: '6px' }}>{column.getIsSorted() ? (column.getIsSorted() === "asc" ? '🔼' : '🔽') : '↕️'}</span> </button>
+      header: ({ column }) => (
+          <button type="button"
+            className="bg-transparent border-none p-0 cursor-pointer font-semibold text-text-primary inline-flex items-center hover:text-text-link"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+              Tanggal Rapat
+              <span className="ml-1.5 w-4 h-4 inline-flex items-center justify-center">
+                 {column.getIsSorted() ? (column.getIsSorted() === "asc" ? '🔼' : '🔽') : '↕️'}
+              </span>
+          </button>
       ),
-      
       cell: ({ row }) => {
           const isoDate = row.getValue("startDateTime");
           try {
-              
-              return <div style={{ color: darkThemeColors.textSecondary }}>{new Date(isoDate).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</div>;
+              return <div className="text-text-secondary">{new Date(isoDate).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</div>;
           } catch (e) {
-              return <div style={{ color: darkThemeColors.textSecondary }}>Invalid Date</div>;
+              return <div className="text-text-secondary">Invalid Date</div>;
           }
       },
-       enableSorting: true, 
+       enableSorting: true,
     },
     {
       accessorKey: "status",
-      header: ({ column }) => ( <button type="button" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontWeight: '600', color: darkThemeColors.textPrimary, display: 'inline-flex', alignItems: 'center' }}
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}> Status <span style={{ marginLeft: '6px' }}>{column.getIsSorted() ? (column.getIsSorted() === "asc" ? '🔼' : '🔽') : '↕️'}</span> </button>
+      header: ({ column }) => (
+         <button type="button"
+            className="bg-transparent border-none p-0 cursor-pointer font-semibold text-text-primary inline-flex items-center hover:text-text-link"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+              Status
+              <span className="ml-1.5 w-4 h-4 inline-flex items-center justify-center">
+                 {column.getIsSorted() ? (column.getIsSorted() === "asc" ? '🔼' : '🔽') : '↕️'}
+              </span>
+          </button>
       ),
       cell: ({ row }) => {
-        const status = row.getValue("status"); 
-        let statusColor = darkThemeColors.textSecondary;
-        let displayStatus = status; 
-
-        if (status === "AKTIF") statusColor = darkThemeColors.brandPrimary;
-        if (status === "SELESAI") statusColor = '#3FB950';
-        if (status === "ARSIP") statusColor = darkThemeColors.textTertiary;
-
-        return <div style={{ textTransform: 'capitalize', color: statusColor, fontWeight: status === "AKTIF" || status === "SELESAI" ? '500' : 'normal' }}>{displayStatus}</div>
+        const status = row.getValue("status");
+        let statusClass = 'status-text ';
+        if (status === "AKTIF") statusClass += 'status-aktif';
+        else if (status === "SELESAI") statusClass += 'status-selesai';
+        else if (status === "ARSIP") statusClass += 'status-arsip';
+        else statusClass += 'status-default';
+        return <div className={statusClass}>{status || '-'}</div>
       },
-       enableSorting: true, 
-       enableColumnFilter: true, 
+       enableSorting: true,
+       enableColumnFilter: true,
     },
     {
       id: "actions", enableHiding: false,
-      cell: ({ row }) => ( 
+      cell: ({ row }) => (
         <ActionCell
-            row={row} 
-            activeActionMenuRowId={activeActionMenuId} 
-            openActionMenu={openActionMenu} 
-            closeActionMenu={closeActionMenu} 
+            row={row}
+            activeActionMenuRowId={activeActionMenuId}
+            openActionMenu={openActionMenu}
+            closeActionMenu={closeActionMenu}
         />
       ),
     },
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [activeActionMenuId, openActionMenu, closeActionMenu, handleLengkapiDokumenClick, handleDeleteRapat, handleDownloadLaporan]); 
+  ], [activeActionMenuId, openActionMenu, closeActionMenu, handleLengkapiDokumenClick, handleDeleteRapat, handleDownloadLaporan]);
 
-
-  
   const table = useReactTable({
-    data: tableData, 
+    data: tableData,
     columns,
-    pageCount: pageCount, 
-    state: { 
-      pagination,
-      sorting,
-      columnFilters,
-      columnVisibility,
-      rowSelection,
+    pageCount: pageCount,
+    state: {
+      pagination, sorting, columnFilters, columnVisibility, rowSelection,
     },
-    
-    manualPagination: true,
-    manualSorting: true, 
-    manualFiltering: true, 
-    
-    onPaginationChange: setPagination, 
-    onSortingChange: setSorting,       
-    onColumnFiltersChange: setColumnFilters, 
+    manualPagination: true, manualSorting: true, manualFiltering: true,
+    onPaginationChange: setPagination,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
-    
+    onRowSelectionChange: setRowSelection, // This is key for knowing selected rows
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(), 
-    getSortedRowModel: getSortedRowModel(), 
-    getFilteredRowModel: getFilteredRowModel(), 
-    getRowId: row => row.id, 
-    debugTable: process.env.NODE_ENV === 'development', 
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getRowId: row => row.id,
+    debugTable: process.env.NODE_ENV === 'development',
   });
 
-  
+  // useEffect for click outside (add bulk action menu)
   useEffect(() => {
     const handleClickOutside = (event) => {
-       const actionMenuPortaled = document.getElementById('action-menu-content-portaled');
-       const actionButton = activeActionMenuId ? document.getElementById(`action-menu-button-${activeActionMenuId}`) : null;
-
        if (activeActionMenuId &&
-           (!actionButton || !actionButton.contains(event.target)) &&
-           (!actionMenuPortaled || !actionMenuPortaled.contains(event.target))) {
+           currentActionButtonRef.current && !currentActionButtonRef.current.contains(event.target) &&
+           actionMenuPortalRef.current && !actionMenuPortalRef.current.contains(event.target)) {
          closeActionMenu();
        }
-       
-       const columnToggleButton = document.getElementById('column-toggle-button');
-       const columnDropdown = document.getElementById('columns-visibility-dropdown');
        if (isColumnToggleMenuVisible &&
-           (!columnToggleButton || !columnToggleButton.contains(event.target)) &&
-           (!columnDropdown || !columnDropdown.contains(event.target))) {
+           columnToggleButtonRef.current && !columnToggleButtonRef.current.contains(event.target) &&
+           columnsVisibilityDropdownRef.current && !columnsVisibilityDropdownRef.current.contains(event.target)) {
          setIsColumnToggleMenuVisible(false);
+       }
+       // NEW: Close bulk action menu
+       if (isBulkActionMenuVisible &&
+           bulkActionButtonRef.current && !bulkActionButtonRef.current.contains(event.target) &&
+           bulkActionMenuDropdownRef.current && !bulkActionMenuDropdownRef.current.contains(event.target)) {
+         closeBulkActionMenu();
        }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [activeActionMenuId, isColumnToggleMenuVisible, closeActionMenu]); 
+  }, [activeActionMenuId, isColumnToggleMenuVisible, closeActionMenu, isBulkActionMenuVisible, closeBulkActionMenu]);
 
-  
   const [isClient, setIsClient] = React.useState(false);
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  useEffect(() => { setIsClient(true); }, []);
 
-  console.log('RENDERING PORTAL CHECK - activeRapatForMenu:', activeRapatForMenu);
-  console.log('RENDERING PORTAL CHECK - Nama Rapat specific:', activeRapatForMenu?.namaRapat);
-  
+  // Tailwind classes
+  const baseInputClass = "px-3 py-2 bg-background-secondary text-text-primary border border-border-default rounded-md text-sm outline-none focus:border-border-focus focus:ring-1 focus:ring-border-focus transition duration-200 ease-in-out";
+  const baseSelectClass = `${baseInputClass} appearance-none pr-9 bg-no-repeat bg-[right_0.75rem_center] bg-[length:1em_1em]`;
+  const baseButtonClass = "px-4 py-2 rounded-md cursor-pointer text-sm font-medium transition-colors duration-150 ease-in-out inline-flex items-center justify-center whitespace-nowrap border";
+  const defaultButtonClass = `${baseButtonClass} bg-background-secondary text-text-primary border-border-default hover:bg-background-tertiary hover:border-border-focus`;
+  const primaryButtonClass = `${baseButtonClass} bg-brand-600 text-text-on-brand border-brand-600 hover:bg-brand-700`;
+  const disabledButtonClass = `${baseButtonClass} text-text-disabled bg-background-tertiary cursor-not-allowed opacity-70 border-border-default`;
+
+
+  // --- BULK ACTION LOGIC ---
+  const selectedRowsData = useMemo(() => {
+    return table.getSelectedRowModel().rows.map(row => row.original);
+  }, [rowSelection, tableData]); // Re-calculate when selection or data changes
+
+  const availableBulkActions = useMemo(() => {
+    if (selectedRowsData.length === 0) return [];
+
+    const statuses = new Set(selectedRowsData.map(row => row.status));
+    const actions = [];
+
+    if (statuses.size === 1) {
+      const singleStatus = statuses.values().next().value;
+      if (singleStatus === "ARSIP") {
+        actions.push({ label: "Download Laporan Terpilih", handler: () => handleBulkDownloadSelected() });
+        actions.push({ label: "Hapus Rapat Terpilih", handler: () => handleBulkDeleteSelected(), isDanger: true });
+      } else if (singleStatus === "SELESAI" || singleStatus === "AKTIF") {
+        actions.push({ label: "Hapus Rapat Terpilih", handler: () => handleBulkDeleteSelected(), isDanger: true });
+      }
+    } else if (statuses.size > 1) { // Mixed statuses
+      actions.push({ label: "Hapus Rapat Terpilih", handler: () => handleBulkDeleteSelected(), isDanger: true });
+    }
+    return actions;
+  }, [selectedRowsData]);
+
+  const handleBulkDeleteSelected = useCallback(async () => {
+    const meetingsToDelete = selectedRowsData;
+    if (meetingsToDelete.length === 0) return;
+
+    if (window.confirm(`Apakah Anda yakin ingin menghapus ${meetingsToDelete.length} rapat yang dipilih?`)) {
+      setIsLoading(true);
+      setError(null);
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const meeting of meetingsToDelete) {
+        try {
+          const response = await fetch(`/api/meetings/${meeting.id}`, { method: 'DELETE' });
+          if (response.status === 401) { router.push('/sign-in'); throw new Error("Sesi tidak valid."); }
+          if (!response.ok) {
+            const errorData = await response.json();
+            console.error(`Gagal menghapus rapat "${meeting.namaRapat}": ${errorData.message || response.status}`);
+            failCount++;
+            continue;
+          }
+          successCount++;
+        } catch (err) {
+          console.error(`Error saat menghapus rapat "${meeting.namaRapat}":`, err);
+          failCount++;
+        }
+      }
+
+      let message = "";
+      if (successCount > 0) message += `${successCount} rapat berhasil dihapus. `;
+      if (failCount > 0) message += `${failCount} rapat gagal dihapus. Lihat konsol untuk detail.`;
+      if (!message) message = "Tidak ada rapat yang diproses.";
+      
+      alert(message);
+      fetchDataRapat();
+      table.resetRowSelection(); // Clear selection
+      closeBulkActionMenu();
+      setIsLoading(false);
+    }
+  }, [selectedRowsData, fetchDataRapat, router, table, closeBulkActionMenu]);
+
+  const handleBulkDownloadSelected = useCallback(async () => {
+    const meetingsToDownload = selectedRowsData.filter(row => row.status === "ARSIP");
+    if (meetingsToDownload.length === 0) {
+        alert("Tidak ada rapat berstatus ARSIP yang dipilih untuk diunduh.");
+        return;
+    }
+
+    if (window.confirm(`Laporan untuk ${meetingsToDownload.length} rapat terpilih (status ARSIP) akan diunduh satu per satu. Lanjutkan?`)) {
+      // No global loading for multiple downloads to keep UI responsive
+      let downloadInitiated = 0;
+      for (const meeting of meetingsToDownload) {
+        // Re-using the single download handler
+        await handleDownloadLaporan(meeting.id, meeting.namaRapat);
+        downloadInitiated++;
+         // Optional: Add a small delay if triggering too many downloads too quickly causes issues
+        // await new Promise(resolve => setTimeout(resolve, 200));
+      }
+      if(downloadInitiated > 0) {
+        // alert(`${downloadInitiated} proses unduh laporan telah dimulai.`);
+      }
+      table.resetRowSelection();
+      closeBulkActionMenu();
+    }
+  }, [selectedRowsData, handleDownloadLaporan, table, closeBulkActionMenu]);
+  // --- END BULK ACTION LOGIC ---
+
+
   return (
-    <div style={{ width: "100%", fontFamily: 'Outfit, sans-serif', backgroundColor: darkThemeColors.backgroundBody, padding: '20px', color: darkThemeColors.textPrimary }}>
-      {}
-      {error && <div style={{ color: 'red', marginBottom: '15px', border: '1px solid red', padding: '10px', borderRadius: '5px' }}>Error: {error}</div>}
+    <div className="w-full font-outfit bg-background-body p-5 text-text-primary">
+      {error && <div className="text-red-500 dark:text-error-400 mb-4 border border-red-500 dark:border-error-500 p-2.5 rounded-md text-sm">Error: {error}</div>}
 
-       {}
-       <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px', gap: '12px' }}>
-        {}
+       <div className="flex items-center mb-5 gap-3 flex-wrap">
         <input type="text" placeholder="Filter nama rapat..."
-          
           value={table.getColumn('namaRapat')?.getFilterValue() ?? ''}
-          
           onChange={(e) => table.getColumn('namaRapat')?.setFilterValue(e.target.value)}
-          style={{...inputBaseStyle, flexGrow: 1 }}
-          onFocus={(e) => {  }}
-          onBlur={(e) => {  }}
+          className={`${baseInputClass} flex-grow min-w-[200px]`}
         />
-        {}
         <select
           value={table.getColumn('status')?.getFilterValue() ?? ''}
           onChange={(e) => table.getColumn('status')?.setFilterValue(e.target.value || undefined)}
-          style={{...selectStyle, flexBasis: '200px' }}
-           onFocus={(e) => {  }}
-           onBlur={(e) => {  }}
+          className={`${baseSelectClass} basis-[200px]`}
+          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='${encodeURIComponent('var(--color-text-secondary)')}'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd' /%3E%3C/svg%3E")`}}
         >
-          <option value="" style={{backgroundColor: darkThemeColors.backgroundSecondary, color: darkThemeColors.textPrimary}}>Semua Status</option>
-          {}
-          <option value="AKTIF" style={{backgroundColor: darkThemeColors.backgroundSecondary, color: darkThemeColors.textPrimary}}>Aktif</option>
-          <option value="SELESAI" style={{backgroundColor: darkThemeColors.backgroundSecondary, color: darkThemeColors.textPrimary}}>Selesai</option>
-          <option value="ARSIP" style={{backgroundColor: darkThemeColors.backgroundSecondary, color: darkThemeColors.textPrimary}}>Arsip</option>
+          <option value="" className="bg-background-secondary text-text-primary">Semua Status</option>
+          <option value="AKTIF" className="bg-background-secondary text-text-primary">Aktif</option>
+          <option value="SELESAI" className="bg-background-secondary text-text-primary">Selesai</option>
+          <option value="ARSIP" className="bg-background-secondary text-text-primary">Arsip</option>
         </select>
 
-        {}
-        <div style={{ position: 'relative' }}>
-          <button id="column-toggle-button" type="button" onClick={() => setIsColumnToggleMenuVisible(!isColumnToggleMenuVisible)}
-            style={buttonStyle}
-             onMouseEnter={(e) => { }}
-             onMouseLeave={(e) => {  }}
+        {/* --- BULK ACTION BUTTON --- */}
+        {selectedRowsData.length > 0 && availableBulkActions.length > 0 && (
+            <div className="relative">
+                <button
+                    id="bulk-action-button"
+                    ref={bulkActionButtonRef}
+                    type="button"
+                    onClick={() => setIsBulkActionMenuVisible(!isBulkActionMenuVisible)}
+                    className={clsx(primaryButtonClass, "ml-auto md:ml-0")} // primary styling
+                    disabled={isLoading || availableBulkActions.length === 0}
+                >
+                    Aksi untuk {selectedRowsData.length} Pilihan <span className="ml-1">▼</span>
+                </button>
+                {isBulkActionMenuVisible && (
+                    <div
+                        id="bulk-action-menu-dropdown"
+                        ref={bulkActionMenuDropdownRef}
+                        className="absolute left-0 md:left-auto md:right-0 top-full mt-1 bg-background-secondary border border-border-default rounded-md shadow-lg z-[1000] min-w-[200px] py-1 max-h-[300px] overflow-y-auto"
+                    >
+                        {availableBulkActions.map((action) => (
+                            <button
+                                key={action.label}
+                                type="button"
+                                onClick={() => { action.handler(); }} // closeBulkActionMenu is handled by individual handlers
+                                className={clsx(
+                                    "block w-full text-left px-3 py-2 cursor-pointer text-text-primary hover:bg-background-tertiary text-sm",
+                                    action.isDanger && "text-error-500 hover:bg-error-subtle hover:text-error-600"
+                                )}
+                            >
+                                {action.label}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+        )}
+        {/* --- END BULK ACTION BUTTON --- */}
+
+        <div className="relative ml-auto md:ml-0"> {/* ml-auto for small screens, then normal flow */}
+          <button id="column-toggle-button" ref={columnToggleButtonRef} type="button"
+            onClick={() => setIsColumnToggleMenuVisible(!isColumnToggleMenuVisible)}
+            className={defaultButtonClass}
           >
-            Kolom <span style={{ }}>▼</span>
+            Kolom <span className="ml-1">▼</span>
           </button>
           {isColumnToggleMenuVisible && (
-             <div id="columns-visibility-dropdown" 
-              style={{ 
-                position: 'absolute',
-                 right: 0,
-                 top: 'calc(100% + 4px)',
-                 backgroundColor: darkThemeColors.backgroundSecondary, 
-                 border: `1px solid ${darkThemeColors.borderDefault}`,
-                 borderRadius: '6px',
-                 boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                 zIndex: 1000,
-                 minWidth: '180px',
-                 padding: '4px 0', 
-                 maxHeight: '300px', 
-                 overflowY: 'auto' 
-               }}
-            
-            >
+             <div id="columns-visibility-dropdown" ref={columnsVisibilityDropdownRef}
+              className="absolute right-0 top-full mt-1 bg-background-secondary border border-border-default rounded-md shadow-lg z-[1000] min-w-[180px] py-1 max-h-[300px] overflow-y-auto"
+             >
               {table.getAllColumns().filter((column) => column.getCanHide()).map((column) => {
                   let columnLabel = column.id;
-                  
                   if (column.id === "namaRapat") columnLabel = "Nama Rapat";
-                  if (column.id === "startDateTime") columnLabel = "Tanggal Rapat"; 
+                  if (column.id === "startDateTime") columnLabel = "Tanggal Rapat";
                   if (column.id === "status") columnLabel = "Status";
-                   return ( 
-                    <div 
-                    key={column.id}
-                    onClick={() => column.toggleVisibility(!column.getIsVisible())} 
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      padding: '8px 12px', 
-                      cursor: 'pointer',
-                      color: darkThemeColors.textPrimary, 
-                      backgroundColor: 'transparent', 
-                      transition: 'background-color 0.15s ease',
-                      fontSize: '14px', 
-                      border: 'none', 
-                      width: '100%', 
-                      textAlign: 'left', 
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkThemeColors.backgroundTertiary} 
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                  >
-                   
-                    <input
-                      type="checkbox"
-                      checked={column.getIsVisible()}
-                      readOnly 
-                      style={{
-                         marginRight: '10px',
-                         accentColor: darkThemeColors.brandPrimary, 
-                       }}
-                    />
-                    
-                    {columnLabel}
-                  </div>
-                    )
+                   return (
+                    <div
+                      key={column.id}
+                      onClick={() => column.toggleVisibility(!column.getIsVisible())}
+                      className="flex items-center px-3 py-2 cursor-pointer text-text-primary hover:bg-background-tertiary text-sm w-full text-left"
+                    >
+                      <input type="checkbox" checked={column.getIsVisible()} readOnly
+                        className="mr-2.5 accent-brand-500"
+                      />
+                      {columnLabel}
+                    </div>
+                   )
                 })}
             </div>
           )}
         </div>
-         {}
          <button
             type="button"
-            onClick={fetchDataRapat} 
+            onClick={() => { fetchDataRapat(); table.resetRowSelection(); }}
             disabled={isLoading}
-            style={isLoading ? buttonDisabledStyle : buttonStyle}
-            onMouseEnter={(e) => !isLoading && Object.assign(e.currentTarget.style, buttonHoverStyle)}
-            onMouseLeave={(e) => !isLoading && Object.assign(e.currentTarget.style, buttonStyle)}
+            className={clsx(isLoading ? disabledButtonClass : defaultButtonClass, 'p-2')}
             title="Refresh data"
          >
-            {}
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: isLoading ? '8px' : '0' }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={clsx(isLoading && 'mr-2')}>
                 <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
                 <path d="M21 3v5h-5"/>
                 <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
                 <path d="M3 21v-5h5"/>
             </svg>
-            {isLoading ? ' Memuat...' : ''}
+            {isLoading ? 'Memuat...' : ''}
          </button>
       </div>
 
-      {/* Tampilkan Loading Selama Fetch */}
-      {isLoading && <div style={{ textAlign: 'center', padding: '20px', color: darkThemeColors.textSecondary }}>Memuat data rapat...</div>}
+      {isLoading && <div className="text-center p-5 text-text-secondary">Memuat data rapat...</div>}
 
-      {/* Tabel */}
-      {!isLoading && !error && ( 
-        <div style={{ overflowX: 'auto', border: `1px solid ${darkThemeColors.borderDefault}`, borderRadius: '8px' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-            <thead>
+      {!isLoading && !error && (
+        <div className="overflow-x-auto border border-border-default rounded-lg">
+          <table className="w-full border-collapse text-sm">
+            <thead className="bg-background-secondary">
               {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id} >
+                <tr key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
-                    <th key={header.id} colSpan={header.colSpan} style={{ padding: '12px 15px', borderBottom: `2px solid ${darkThemeColors.borderStrong}`, textAlign: 'left', backgroundColor: darkThemeColors.backgroundSecondary, color: darkThemeColors.textPrimary, fontWeight: '600', whiteSpace: 'nowrap' }}>
+                    <th key={header.id} colSpan={header.colSpan}
+                      className="px-4 py-3 border-b-2 border-border-strong text-left text-text-primary font-semibold whitespace-nowrap"
+                    >
                       {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </th>
                   ))}
@@ -683,12 +621,17 @@ export function DataTableRapat() {
             </thead>
             <tbody>
               {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => ( 
-                  <tr key={row.id} style={{ backgroundColor: row.getIsSelected() ? darkThemeColors.rowSelectedBg : (Number(row.id.replace(/\D/g,'')) % 2 === 0 ? darkThemeColors.backgroundPrimary : darkThemeColors.backgroundSecondary),  }}
-                   onMouseEnter={(e) => {  }}
-                   onMouseLeave={(e) => {  }}>
+                table.getRowModel().rows.map((row, index) => (
+                  <tr key={row.id}
+                    className={clsx(
+                      "hover:bg-background-tertiary/50 transition-colors",
+                      row.getIsSelected()
+                        ? "bg-brand-subtle text-text-primary"
+                        : index % 2 === 0 ? "bg-background-primary" : "bg-background-secondary"
+                    )}
+                  >
                     {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} style={{ padding: '12px 15px', borderBottom: `1px solid ${darkThemeColors.borderDefault}` }}>
+                      <td key={cell.id} className="px-4 py-3 border-b border-border-default">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
                     ))}
@@ -696,7 +639,7 @@ export function DataTableRapat() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={columns.length} style={{ padding: '40px 0', textAlign: 'center', color: darkThemeColors.textTertiary, fontStyle: 'italic' }}>
+                  <td colSpan={columns.length} className="py-10 text-center text-text-tertiary italic">
                     Tidak ada hasil.
                   </td>
                 </tr>
@@ -706,118 +649,115 @@ export function DataTableRapat() {
         </div>
       )}
 
-      {/* Pagination Controls */}
-      {!isLoading && !error && pageCount > 0 && ( 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '20px', fontSize: '14px', color: darkThemeColors.textSecondary }}>
-              <div style={{ flexShrink: 0 }}>
+      {!isLoading && !error && pageCount > 0 && (
+          <div className="flex items-center justify-between pt-5 text-sm text-text-secondary flex-wrap gap-y-3">
+              <div className="flex-shrink-0">
                   {table.getFilteredSelectedRowModel().rows.length} dari{' '}
                   {table.getFilteredRowModel().rows.length} baris dipilih.
-                  
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <div className="flex items-center gap-2 flex-wrap">
                   <span>
                       Halaman{' '}
                       <strong>
                           {table.getState().pagination.pageIndex + 1} dari {table.getPageCount()}
                       </strong>
                   </span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px'}}>
+                  <span className="flex items-center gap-1">
                       | Ke halaman:
                       <input
                           type="number"
-                          
-                          value={table.getState().pagination.pageIndex + 1}
+                          defaultValue={table.getState().pagination.pageIndex + 1} // Use defaultValue for uncontrolled with manual update
                           onChange={e => {
-                              const page = e.target.value ? Number(e.target.value) - 1 : 0
-                              // Pastikan tidak melebihi batas
-                              if (page >= 0 && page < table.getPageCount()) {
-                                  table.setPageIndex(page)
-                              }
+                            const page = e.target.value ? Number(e.target.value) - 1 : 0;
+                            if (page >=0 && page < table.getPageCount()) {
+                                table.setPageIndex(page);
+                            }
                           }}
-                          min={1}
-                          max={table.getPageCount()}
-                          style={{ ...inputBaseStyle, width: '60px', padding: '6px 8px', textAlign: 'center' }}
+                          onBlur={e => { // Ensure value is within bounds on blur
+                            let page = e.target.value ? Number(e.target.value) -1 : 0;
+                            if (page < 0) page = 0;
+                            if (page >= table.getPageCount()) page = table.getPageCount() -1;
+                            table.setPageIndex(page);
+                            e.target.value = page + 1; // Update input to reflect actual page
+                          }}
+                          min={1} max={table.getPageCount()}
+                          className={`${baseInputClass} w-16 px-2 py-1 text-center`}
                       />
                   </span>
                   <select
                       value={table.getState().pagination.pageSize}
-                      onChange={e => {
-                          table.setPageSize(Number(e.target.value))
-                      }}
-                      style={{...selectStyle, paddingRight: '30px', paddingLeft: '8px', height: '36px'}}
+                      onChange={e => { table.setPageSize(Number(e.target.value)) }}
+                      className={`${baseSelectClass} h-auto py-1 pr-7 pl-2`}
+                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='${encodeURIComponent('var(--color-text-secondary)')}'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd' /%3E%3C/svg%3E")`}}
                   >
                       {[10, 20, 30, 40, 50].map(pageSize => (
-                          <option key={pageSize} value={pageSize} style={{backgroundColor: darkThemeColors.backgroundSecondary, color: darkThemeColors.textPrimary}}>
+                          <option key={pageSize} value={pageSize} className="bg-background-secondary text-text-primary">
                               Tampil {pageSize}
                           </option>
                       ))}
                   </select>
-                  {/* Tombol Pagination */}
-                  <button type="button" onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()} style={!table.getCanPreviousPage() ? buttonDisabledStyle : buttonStyle} /* ... hover events ... */ > {'<<'} </button>
-                  <button type="button" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} style={!table.getCanPreviousPage() ? buttonDisabledStyle : buttonStyle} /* ... hover events ... */ > {'<'} </button>
-                  <button type="button" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} style={!table.getCanNextPage() ? buttonDisabledStyle : buttonStyle} /* ... hover events ... */ > {'>'} </button>
-                  <button type="button" onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()} style={!table.getCanNextPage() ? buttonDisabledStyle : buttonStyle} /* ... hover events ... */ > {'>>'} </button>
+                  <button type="button" onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()} className={clsx(!table.getCanPreviousPage() ? disabledButtonClass : defaultButtonClass, 'p-2')}> {'<<'} </button>
+                  <button type="button" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className={clsx(!table.getCanPreviousPage() ? disabledButtonClass : defaultButtonClass, 'p-2')}> {'<'} </button>
+                  <button type="button" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className={clsx(!table.getCanNextPage() ? disabledButtonClass : defaultButtonClass, 'p-2')}> {'>'} </button>
+                  <button type="button" onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()} className={clsx(!table.getCanNextPage() ? disabledButtonClass : defaultButtonClass, 'p-2')}> {'>>'} </button>
               </div>
           </div>
       )}
 
-      {/* Modal Lengkapi Dokumen (Sebagian besar sama, ikat ke state baru) */}
-      {rapatUntukModal && (
+       {rapatUntukModal && (
         <Modal
             isOpen={isOpen}
-            onClose={() => {
-                if (isSubmitting) return; 
-                closeModal();
-                setRapatUntukModal(null);
-                setNotulensiInput(""); 
-                setFilesToUpload([]); 
-                setError(null); 
-            }}
-            className="max-w-[700px] p-6 lg:p-10 bg-gray-800 rounded-lg" 
+            onClose={closeModal} // Use the new closeModal
+            className="max-w-2xl w-full m-4"
         >
-            <div className="flex flex-col px-2 overflow-y-auto custom-scroll max-h-[80vh]">
-                <div>
-                    <h5 className="mb-2 text-white text-lg font-semibold">
+            <div className="flex flex-col bg-background-primary rounded-lg shadow-xl max-h-[85vh]">
+                <div className="px-6 py-4 border-b border-border-default">
+                    <h5 className="text-lg font-semibold text-text-primary">
                         Lengkapi Dokumen Rapat
                     </h5>
-                    <p className="text-sm text-gray-400">
-                        Silahkan masukkan informasi dokumen untuk: <strong style={{color: darkThemeColors.brandPrimary}}>{rapatUntukModal.namaRapat}</strong>
+                    <p className="text-sm text-text-secondary mt-1">
+                        Untuk: <strong className="text-brand-400">{rapatUntukModal.namaRapat}</strong>
                     </p>
-                    {/* Tampilkan error spesifik modal */}
-                    {error && <p className="text-sm text-red-400 mt-2">{error}</p>}
+                    {/* Modal-specific error */}
+                    {error && rapatUntukModal && <p className="text-sm text-error-500 dark:text-error-400 mt-2">{error}</p>}
                 </div>
-                <div className="mt-8">
-                    <div className="mb-6">
-                        <label htmlFor="doc-notulensi" className="modal-label mb-1.5 block text-sm font-medium text-gray-400">
-                            Notulensi Rapat {/* Ubah label jika perlu */}
+
+                <div className="px-6 py-5 flex-grow overflow-y-auto space-y-6">
+                    <div>
+                        <label htmlFor="doc-notulensi" className="block text-sm font-medium text-text-secondary mb-1.5">
+                            Notulensi Rapat
                         </label>
                         <textarea
                             id="doc-notulensi"
-                            rows={5} 
-                            value={notulensiInput} 
+                            rows={5}
+                            value={notulensiInput}
                             onChange={(e) => setNotulensiInput(e.target.value)}
                             placeholder="Masukkan hasil notulensi rapat di sini..."
-                            className="modal-input w-full rounded-lg border bg-gray-900 border-gray-700 px-4 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:border-brand-800 focus:ring-1 focus:ring-brand-800 outline-none"
+                            className={`${baseInputClass} w-full resize-y`}
                             disabled={isSubmitting}
                         />
                     </div>
-                    <div className="mb-6">
-                        <label htmlFor="doc-file" className="modal-label mb-1.5 block text-sm font-medium text-gray-400">
+                    <div>
+                         <label htmlFor="doc-file" className="block text-sm font-medium text-text-secondary mb-1.5">
                             Upload File Dokumen (Maks 5)
                         </label>
-                        <input
+                         <input
                             id="doc-file"
                             type="file"
-                            multiple 
-                            onChange={handleFileChange} 
+                            multiple
+                            onChange={handleFileChange}
                             accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
-                            className="modal-input file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-brand-800 file:text-brand-100 hover:file:bg-brand-700 block w-full text-sm text-gray-400 cursor-pointer"
+                            className="block w-full text-sm text-text-secondary cursor-pointer
+                                file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0
+                                file:text-sm file:font-semibold
+                                file:bg-brand-600 file:text-text-on-brand
+                                hover:file:bg-brand-700
+                                focus:outline-none focus:ring-1 focus:ring-border-focus"
                             disabled={isSubmitting}
                         />
-                         <p className="mt-1 text-xs text-gray-400">PDF, DOC, DOCX, PNG, JPG (MAX. 5MB per file)</p>
-                         {/* Tampilkan daftar file terpilih */}
-                         {filesToUpload.length > 0 && (
-                           <ul className="mt-2 list-disc list-inside text-xs text-green-400">
+                        <p className="mt-1 text-xs text-text-tertiary">PDF, DOC, DOCX, PNG, JPG (MAX. 5MB per file)</p>
+                        {filesToUpload.length > 0 && (
+                           <ul className="mt-2 list-disc list-inside text-xs text-success-500 dark:text-success-400 space-y-1">
                              {filesToUpload.map((file, index) => (
                                <li key={index}>{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</li>
                              ))}
@@ -825,20 +765,27 @@ export function DataTableRapat() {
                          )}
                     </div>
                 </div>
-                 <div className="flex items-center gap-3 mt-8 pt-6 border-t border-gray-700 modal-footer sm:justify-end">
+
+                <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border-default">
                     <button
-                        onClick={() => { closeModal(); setRapatUntukModal(null); setNotulensiInput(""); setFilesToUpload([]); setError(null); }}
+                        onClick={closeModal}
                         type="button"
                         disabled={isSubmitting}
-                        className="modal-footer-button modal-footer-close flex w-full justify-center rounded-lg border border-gray-600 bg-gray-800 px-4 py-2.5 text-sm font-medium text-gray-300 hover:bg-gray-700 sm:w-auto disabled:opacity-50"
+                        className={clsx(
+                            baseButtonClass,
+                            'bg-background-primary border-border-default text-text-primary hover:bg-background-secondary disabled:opacity-50'
+                        )}
                     >
                         Batal
                     </button>
                     <button
                         onClick={handleSimpanDokumen}
                         type="button"
-                        disabled={isSubmitting}
-                        className="modal-footer-button modal-footer-action flex w-full justify-center rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700 sm:w-auto disabled:opacity-50"
+                        disabled={isSubmitting || (!notulensiInput.trim() && filesToUpload.length === 0)}
+                        className={clsx(
+                            baseButtonClass,
+                            'bg-brand-600 border-brand-600 text-text-on-brand hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed'
+                        )}
                     >
                         {isSubmitting ? 'Menyimpan...' : 'Simpan Dokumen'}
                     </button>
@@ -847,73 +794,63 @@ export function DataTableRapat() {
         </Modal>
       )}
 
-      {/* Portal untuk Menu Aksi (action menu) */}
       {isClient && activeActionMenuId && menuPosition && activeRapatForMenu && ReactDOM.createPortal(
         <div
-          id="action-menu-content-portaled"
-          style={{ 
+          ref={actionMenuPortalRef}
+          style={{
             position: 'absolute',
             top: `${menuPosition.top}px`,
             left: `${menuPosition.left}px`,
-            backgroundColor: darkThemeColors.backgroundSecondary,
-            border: `1px solid ${darkThemeColors.borderDefault}`,
-            borderRadius: '6px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
             zIndex: 2000,
-            minWidth: '180px',
-            padding: '8px 0',
            }}
-        > 
-          <div style={{ padding: '8px 16px', fontSize: '12px', fontWeight: '600', color: darkThemeColors.textTertiary, borderBottom: `1px solid ${darkThemeColors.borderDefault}`, marginBottom: '4px' }}>
-            Aksi untuk: <br/> 
-            <strong style={{color: darkThemeColors.brandPrimary, fontSize: '13px'}}>
-              {/* Gunakan optional chaining dan fallback value */}
+          className="menu-dropdown"
+        >
+          <div className="px-4 py-2 text-xs font-semibold text-text-tertiary border-b border-border-default mb-1">
+            Aksi untuk: <br/>
+            <strong className="text-brand-400 text-[13px] block truncate" title={activeRapatForMenu?.namaRapat || ''}>
               {activeRapatForMenu?.namaRapat
-                  
                   ? `${activeRapatForMenu.namaRapat.substring(0, 25)}${activeRapatForMenu.namaRapat.length > 25 ? "..." : ""}`
                   : '(Nama Rapat Tidak Tersedia)'
-                  
               }
             </strong>
           </div>
-          { 
+          {
             (() => {
-              const menuItems = [];
-              const currentStatus = activeRapatForMenu.status; 
+               const menuItems = [];
+              const currentStatus = activeRapatForMenu?.status;
 
-              
               const hapusAction = {
                 label: "Hapus Rapat",
-                action: () => handleDeleteRapat(activeRapatForMenu.id, activeRapatForMenu.namaRapat), 
-                style: { color: '#F87171' }
+                action: () => handleDeleteRapat(activeRapatForMenu?.id, activeRapatForMenu?.namaRapat),
+                className: "menu-dropdown-item menu-dropdown-item-danger"
               };
 
               if (currentStatus === "AKTIF") {
-                  
-                  
                   menuItems.push(hapusAction);
               } else if (currentStatus === "SELESAI") {
                 menuItems.push({
                     label: "Lengkapi Dokumen",
-                    action: () => handleLengkapiDokumenClick(activeRapatForMenu) 
+                    action: () => handleLengkapiDokumenClick(activeRapatForMenu),
+                    className: "menu-dropdown-item"
                 });
                 menuItems.push(hapusAction);
               } else if (currentStatus === "ARSIP") {
                 menuItems.push({
                     label: "Download Laporan",
-                    action: () => handleDownloadLaporan(activeRapatForMenu.id, activeRapatForMenu.namaRapat) 
+                    action: () => handleDownloadLaporan(activeRapatForMenu?.id, activeRapatForMenu?.namaRapat),
+                    className: "menu-dropdown-item"
                 });
-                menuItems.push(hapusAction); 
+                menuItems.push(hapusAction);
               }
 
-              // Render tombol menu
               return menuItems.map((item) => (
                 <button
                   key={item.label}
                   type="button"
-                  style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: '8px 16px', fontSize: '14px', color: item.style?.color || darkThemeColors.textPrimary, cursor: 'pointer', transition: 'background-color 0.15s ease' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkThemeColors.backgroundTertiary}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  className={clsx(
+                    "block w-full text-left px-4 py-2 text-sm cursor-pointer transition-colors duration-150",
+                    item.className
+                  )}
                   onClick={() => { item.action(); closeActionMenu(); }}
                 >
                   {item.label}
@@ -922,7 +859,7 @@ export function DataTableRapat() {
             })()
           }
         </div>,
-        document.body // Target portal
+        document.body
       )}
     </div>
   );
