@@ -15,9 +15,11 @@ const TableHeader = ({ headerGroups, onSort }) => {
                   className="bg-transparent border-none p-0 cursor-pointer font-semibold text-text-primary inline-flex items-center hover:text-text-link"
                   onClick={() => header.column.getCanSort() && onSort(header)}>
                   {flexRender(header.column.columnDef.header, header.getContext())}
-                  <span className="ml-1.5 w-4 h-4 inline-flex items-center justify-center">
-                    {header.column.getCanSort() && header.column.getIsSorted() ? (header.column.getIsSorted() === "asc" ? '🔼' : '🔽') : '↕️'}
-                  </span>
+                  {header.column.id !== 'select' && header.column.id !== 'actions' && (
+                    <span className="ml-1.5 w-4 h-4 inline-flex items-center justify-center">
+                        {header.column.getCanSort() && header.column.getIsSorted() ? (header.column.getIsSorted() === "asc" ? '🔼' : '🔽') : '↕️'}
+                    </span>
+                  )}
                 </button>
               )}
             </th>
