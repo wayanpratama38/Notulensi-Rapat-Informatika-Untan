@@ -5,7 +5,7 @@ module.exports = {
       "./components/**/*.{js,ts,jsx,tsx}",
       "./app/**/*.{js,ts,jsx,tsx}", // Jika menggunakan Next.js App Router
       "./src/**/*.{js,ts,jsx,tsx}", // Jika struktur Anda berbeda
-      "/src/app/global.css", // Tambahkan ini jika Anda benar-benar ingin @apply di global.css
+      "./src/app/globals.css", 
     ],
     theme: {
       extend: {

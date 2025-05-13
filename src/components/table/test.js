@@ -16,31 +16,17 @@ import { useRouter } from 'next/navigation';
 import { useModal } from "@/hooks/useModal";
 import { Modal } from "@/components/ui/modal";
 
-// ActionCell remains the same
-const ActionCell = React.memo(({ row, activeActionMenuRowId, openActionMenu, closeActionMenu }) => {
-    const isMenuOpen = activeActionMenuRowId === row.id;
-    return (
-      <div className="relative">
-        <button
-          type="button"
-          id={`action-menu-button-${row.id}`}
-          aria-label="Open actions menu"
-          className="btn-action"
-          onClick={(e) => {
-            // console.log(`Action button clicked. Data being sent:`, row.original);
-            if (isMenuOpen) {
-              closeActionMenu();
-            } else {
-              openActionMenu(row, e.currentTarget);
-            }
-          }}
-        >
-          …
-        </button>
-      </div>
-    );
-});
-ActionCell.displayName = 'ActionCell';
+import { 
+  fetchDataRapat,
+  deleteDataRapat,
+  completeDataRapat,
+  downloadDataRapat,
+ } from '@/services/table/dashboard-services';
+import { downloadPdf } from '@/utils/download-pdf';
+import useDebounce from '@/hooks/useDebounce';
+import ActionCell from './actions-cell';
+import TableHeader from './table-header';
+import formatDate from '@/utils/format-date';
 
 
 export function DataTableRapat() {
@@ -65,56 +51,41 @@ export function DataTableRapat() {
   const [notulensiInput, setNotulensiInput] = useState("");
   const [filesToUpload, setFilesToUpload] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
+  const debouncedSearchInput = useDebounce(searchInput, 300);
 
-  // NEW state for bulk actions
+
   const [isBulkActionMenuVisible, setIsBulkActionMenuVisible] = useState(false);
 
 
-  // Refs
+  
   const columnToggleButtonRef = useRef(null);
   const columnsVisibilityDropdownRef = useRef(null);
   const actionMenuPortalRef = useRef(null);
   const currentActionButtonRef = useRef(null);
-  // NEW ref for bulk action menu
   const bulkActionButtonRef = useRef(null);
   const bulkActionMenuDropdownRef = useRef(null);
 
 
-  const fetchDataRapat = useCallback(async () => {
-    // ... (fetchDataRapat remains the same)
+ 
+
+
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    const params = new URLSearchParams({
-      page: (pagination.pageIndex + 1).toString(),
-      limit: pagination.pageSize.toString(),
-    });
-    columnFilters.forEach(filter => {
-      if (filter.value) {
-         if (filter.id === 'namaRapat') {
-            params.append('searchNamaRapat', filter.value);
-         } else {
-             params.append(filter.id, filter.value);
-         }
-      }
-    });
-    if (sorting.length > 0) {
-      params.append('sortBy', sorting[0].id);
-      params.append('order', sorting[0].desc ? 'desc' : 'asc');
-    }
     try {
-      const response = await fetch(`/api/meetings?${params.toString()}`);
-      if (response.status === 401) {
-        setError("Sesi tidak valid. Silakan login kembali.");
-        router.push('/sign-in');
-        return;
-      }
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Gagal mengambil data: ${response.status}`);
-      }
-      const result = await response.json();
-      setTableData(result.data || []);
-      setPageCount(result.totalPages || 0);
+      const {data, totalPages } = await fetchDataRapat({
+        page : pagination.pageIndex + 1,
+        limit : pagination.pageSize,
+        filters : [{
+          id: 'namaRapat', 
+          value: debouncedSearchInput,
+        }
+        ,...columnFilters],
+        sorting
+      })
+      setTableData(data);
+      setPageCount(totalPages);
     } catch (err) {
       console.error("Fetch data error:", err);
       setError(err.message);
@@ -123,11 +94,15 @@ export function DataTableRapat() {
     } finally {
       setIsLoading(false);
     }
-  }, [pagination.pageIndex, pagination.pageSize, columnFilters, sorting, router]);
+  }, [pagination.pageIndex, pagination.pageSize, columnFilters, sorting, debouncedSearchInput]);
+
+  
 
   useEffect(() => {
-    fetchDataRapat();
-  }, [fetchDataRapat]);
+    fetchData();
+  }, [fetchData]);
+
+  
 
 
   // Menus close/open
@@ -196,58 +171,54 @@ export function DataTableRapat() {
     formData.append('notulensiRapat', notulensiInput);
     filesToUpload.forEach(file => formData.append('dokumenRapat', file));
     try {
-      const response = await fetch(`/api/meetings/${rapatUntukModal.id}/complete`, {
-        method: 'POST', body: formData,
-      });
-      if (response.status === 401) { setError("Sesi tidak valid."); router.push('/sign-in'); return; }
-      if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || `Gagal menyimpan dokumen.`); }
+      await completeDataRapat(rapatUntukModal.id,formData);
       alert(`Dokumen untuk rapat "${rapatUntukModal.namaRapat}" berhasil disimpan.`);
-      closeModal(); // Use the new closeModal
-      fetchDataRapat();
-    } catch (err) { setError(err.message); } // Set error for modal
+      closeModal();
+      fetchData();
+    } catch (err) { 
+      if(err.message === "Unauthorized") {
+        router.push('/sign-in');
+        return;
+      }
+      setError(err.message); 
+    } // Set error for modal
     finally { setIsSubmitting(false); }
-  }, [closeModal, rapatUntukModal, notulensiInput, filesToUpload, fetchDataRapat, router]);
+  }, [closeModal, rapatUntukModal, notulensiInput, filesToUpload, fetchData, router]);
 
-   const handleDeleteRapat = useCallback(async (meetingId, namaRapat) => {
+  const handleDeleteRapat = useCallback(async (meetingId, namaRapat) => {
       if (!meetingId) return;
       if (window.confirm(`Apakah Anda yakin ingin menghapus rapat "${namaRapat}"?`)) {
-          setIsLoading(true); // Global loading for table
-          setError(null); // Global error for table
+          setIsLoading(true); 
+          setError(null); 
           try {
-              const response = await fetch(`/api/meetings/${meetingId}`, { method: 'DELETE' });
-              if(response.status === 401) { setError("Sesi tidak valid."); router.push('/sign-in'); return; }
-              if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || `Gagal menghapus rapat.`); }
+              await deleteDataRapat(meetingId);
               alert(`Rapat "${namaRapat}" berhasil dihapus.`);
-              fetchDataRapat();
-              // If this delete was part of a bulk, selection is handled by bulk handler
-          } catch (err) { setError(err.message); }
+              fetchData();
+          } catch (err) { 
+            if(err.message === "Unauthorized") {
+              router.push('/sign-in');
+              return;
+            }
+            setError(err.message); }
           finally { setIsLoading(false); }
       }
-  }, [fetchDataRapat, router]);
+  }, [fetchData, router]);
 
   const handleDownloadLaporan = useCallback(async (meetingId, namaRapat) => {
      if (!meetingId) return;
-     // For single download, error can be local to the action or global.
-     // Let's keep it simple and potentially show an alert.
-     // setError(null); // If you want a global error display
       try {
-          const response = await fetch(`/api/meetings/${meetingId}/download-report`);
-          if (response.status === 401) { alert("Sesi tidak valid. Silakan login kembali."); router.push('/sign-in'); return; }
-          if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || `Gagal mengunduh laporan.`); }
-          const blob = await response.blob();
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          const safeName = namaRapat.replace(/[^a-zA-Z0-9]/g, '_');
-          a.download = `Laporan_Rapat_${safeName}.pdf`;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          window.URL.revokeObjectURL(url);
-      } catch (err) { alert(`Error: ${err.message}`); }
+          const blob = await downloadDataRapat(meetingId);
+          downloadPdf(blob,`Notulensi_${namaRapat}.pdf`);
+      } catch (err) { 
+        if(err.message === "Unauthorized") {
+          router.push('/sign-in');
+          return;
+        }
+        alert(`Error: ${err.message}`); 
+      }
   }, [router]);
 
-  // Columns definition (no change needed here for bulk actions)
+ 
   const columns = useMemo(() => [
      {
       id: "select",
@@ -271,64 +242,32 @@ export function DataTableRapat() {
     },
     {
       accessorKey: "namaRapat",
-      header: ({ column }) => (
-          <button type="button"
-            className="bg-transparent border-none p-0 cursor-pointer font-semibold text-text-primary inline-flex items-center hover:text-text-link"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-              Nama Rapat
-              <span className="ml-1.5 w-4 h-4 inline-flex items-center justify-center">
-                 {column.getIsSorted() ? (column.getIsSorted() === "asc" ? '🔼' : '🔽') : '↕️'}
-              </span>
-          </button>
-      ),
-      cell: ({ row }) => <div className="text-text-secondary">{row.getValue("namaRapat")}</div>,
+      header: "Nama Rapat",
+      enableSorting : true,
       enableColumnFilter: true,
     },
     {
       accessorKey: "startDateTime",
-      header: ({ column }) => (
-          <button type="button"
-            className="bg-transparent border-none p-0 cursor-pointer font-semibold text-text-primary inline-flex items-center hover:text-text-link"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-              Tanggal Rapat
-              <span className="ml-1.5 w-4 h-4 inline-flex items-center justify-center">
-                 {column.getIsSorted() ? (column.getIsSorted() === "asc" ? '🔼' : '🔽') : '↕️'}
-              </span>
-          </button>
-      ),
-      cell: ({ row }) => {
-          const isoDate = row.getValue("startDateTime");
-          try {
-              return <div className="text-text-secondary">{new Date(isoDate).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</div>;
-          } catch (e) {
-              return <div className="text-text-secondary">Invalid Date</div>;
-          }
-      },
-       enableSorting: true,
+      header: "Tanggal Rapat",
+      enableSorting: true,
+      cell : ({row}) => {
+        return formatDate(row.original.startDateTime)
+      }
     },
     {
       accessorKey: "status",
-      header: ({ column }) => (
-         <button type="button"
-            className="bg-transparent border-none p-0 cursor-pointer font-semibold text-text-primary inline-flex items-center hover:text-text-link"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-              Status
-              <span className="ml-1.5 w-4 h-4 inline-flex items-center justify-center">
-                 {column.getIsSorted() ? (column.getIsSorted() === "asc" ? '🔼' : '🔽') : '↕️'}
-              </span>
-          </button>
-      ),
-      cell: ({ row }) => {
-        const status = row.getValue("status");
-        let statusClass = 'status-text ';
-        if (status === "AKTIF") statusClass += 'status-aktif';
-        else if (status === "SELESAI") statusClass += 'status-selesai';
-        else if (status === "ARSIP") statusClass += 'status-arsip';
-        else statusClass += 'status-default';
-        return <div className={statusClass}>{status || '-'}</div>
-      },
-       enableSorting: true,
-       enableColumnFilter: true,
+      header:"Status",
+      enableSorting: true,
+      enableColumnFilter: true,
+      cell : ({row}) => (
+        <span className={clsx({
+          'text-blue-500 font-bold': row.original.status === 'AKTIF',
+          'text-green-500 font-bold': row.original.status === 'SELESAI',
+          'text-gray-500 font-bold': row.original.status === 'ARSIP',
+        })}>
+          {row.original.status}
+        </span>
+      )
     },
     {
       id: "actions", enableHiding: false,
@@ -341,7 +280,7 @@ export function DataTableRapat() {
         />
       ),
     },
-  ], [activeActionMenuId, openActionMenu, closeActionMenu, handleLengkapiDokumenClick, handleDeleteRapat, handleDownloadLaporan]);
+  ], [activeActionMenuId, openActionMenu, closeActionMenu]);
 
   const table = useReactTable({
     data: tableData,
@@ -350,12 +289,14 @@ export function DataTableRapat() {
     state: {
       pagination, sorting, columnFilters, columnVisibility, rowSelection,
     },
-    manualPagination: true, manualSorting: true, manualFiltering: true,
+    manualPagination: true, 
+    manualSorting: true, 
+    manualFiltering: true,
     onPaginationChange: setPagination,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection, // This is key for knowing selected rows
+    onRowSelectionChange: setRowSelection, 
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -363,6 +304,7 @@ export function DataTableRapat() {
     getRowId: row => row.id,
     debugTable: process.env.NODE_ENV === 'development',
   });
+
 
   // useEffect for click outside (add bulk action menu)
   useEffect(() => {
@@ -419,7 +361,7 @@ export function DataTableRapat() {
       } else if (singleStatus === "SELESAI" || singleStatus === "AKTIF") {
         actions.push({ label: "Hapus Rapat Terpilih", handler: () => handleBulkDeleteSelected(), isDanger: true });
       }
-    } else if (statuses.size > 1) { // Mixed statuses
+    } else if (statuses.size > 1) {
       actions.push({ label: "Hapus Rapat Terpilih", handler: () => handleBulkDeleteSelected(), isDanger: true });
     }
     return actions;
@@ -458,12 +400,12 @@ export function DataTableRapat() {
       if (!message) message = "Tidak ada rapat yang diproses.";
       
       alert(message);
-      fetchDataRapat();
+      fetchData();
       table.resetRowSelection(); // Clear selection
       closeBulkActionMenu();
       setIsLoading(false);
     }
-  }, [selectedRowsData, fetchDataRapat, router, table, closeBulkActionMenu]);
+  }, [selectedRowsData, fetchData, router, table, closeBulkActionMenu]);
 
   const handleBulkDownloadSelected = useCallback(async () => {
     const meetingsToDownload = selectedRowsData.filter(row => row.status === "ARSIP");
@@ -498,8 +440,8 @@ export function DataTableRapat() {
 
        <div className="flex items-center mb-5 gap-3 flex-wrap">
         <input type="text" placeholder="Filter nama rapat..."
-          value={table.getColumn('namaRapat')?.getFilterValue() ?? ''}
-          onChange={(e) => table.getColumn('namaRapat')?.setFilterValue(e.target.value)}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
           className={`${baseInputClass} flex-grow min-w-[200px]`}
         />
         <select
@@ -537,9 +479,9 @@ export function DataTableRapat() {
                             <button
                                 key={action.label}
                                 type="button"
-                                onClick={() => { action.handler(); }} // closeBulkActionMenu is handled by individual handlers
+                                onClick={() => { action.handler(); }} 
                                 className={clsx(
-                                    "block w-full text-left px-3 py-2 cursor-pointer text-text-primary hover:bg-background-tertiary text-sm",
+                                    "block w-full text-left px-3 py-2 cursor-pointer text-text-primary bg-white hover:bg-background-tertiary text-sm",
                                     action.isDanger && "text-error-500 hover:bg-error-subtle hover:text-error-600"
                                 )}
                             >
@@ -561,7 +503,7 @@ export function DataTableRapat() {
           </button>
           {isColumnToggleMenuVisible && (
              <div id="columns-visibility-dropdown" ref={columnsVisibilityDropdownRef}
-              className="absolute right-0 top-full mt-1 bg-background-secondary border border-border-default rounded-md shadow-lg z-[1000] min-w-[180px] py-1 max-h-[300px] overflow-y-auto"
+              className="menu-dropdown absolute right-0 top-full mt-1 z-[1000] max-h-[300px] overflow-y-auto"
              >
               {table.getAllColumns().filter((column) => column.getCanHide()).map((column) => {
                   let columnLabel = column.id;
@@ -586,7 +528,7 @@ export function DataTableRapat() {
         </div>
          <button
             type="button"
-            onClick={() => { fetchDataRapat(); table.resetRowSelection(); }}
+            onClick={() => { fetchData(); table.resetRowSelection(); }}
             disabled={isLoading}
             className={clsx(isLoading ? disabledButtonClass : defaultButtonClass, 'p-2')}
             title="Refresh data"
@@ -606,19 +548,10 @@ export function DataTableRapat() {
       {!isLoading && !error && (
         <div className="overflow-x-auto border border-border-default rounded-lg">
           <table className="w-full border-collapse text-sm">
-            <thead className="bg-background-secondary">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <th key={header.id} colSpan={header.colSpan}
-                      className="px-4 py-3 border-b-2 border-border-strong text-left text-text-primary font-semibold whitespace-nowrap"
-                    >
-                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
+            <TableHeader 
+              headerGroups={table.getHeaderGroups()}
+              onSort = {(header)=> header.column.toggleSorting(header.column.getIsSorted() === "asc")}
+            />
             <tbody>
               {table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row, index) => (
