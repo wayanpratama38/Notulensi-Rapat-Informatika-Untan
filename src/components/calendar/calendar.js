@@ -22,9 +22,9 @@ const Calendar = () => {
   const [endTime, setEndTime] = useState("");
   
   
-  const [allParticipants, setAllParticipants] = useState([]); 
-  const [availableParticipants, setAvailableParticipants] = useState([]); 
-  const [selectedParticipantIds, setSelectedParticipantIds] = useState([]); 
+  const [allUsers, setAllUsers] = useState([]); 
+  const [availableUsers, setAvailableUsers] = useState([]); 
+  const [selectedUserIds, setSelectedUserIds] = useState([]); 
   
   
   
@@ -35,28 +35,28 @@ const Calendar = () => {
   const calendarRef = useRef(null);
   const { isOpen, openModal, closeModal } = useModal();
 
-  // 1. Fungsi untuk Fetch Peserta dari API
-  const fetchParticipants = useCallback(async () => {
+  // 1. Fungsi untuk Fetch User dari API
+  const fetchUsers = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/participants'); 
+      const response = await fetch('/api/users'); 
       if (response.status === 401) {
-        router.push('/login'); 
+        router.push('/sign-in'); 
         return;
       }
       if (!response.ok) {
-        throw new Error('Gagal mengambil data peserta');
+        throw new Error('Gagal mengambil data pengguna');
       }
       const data = await response.json();
-      setAllParticipants(data || []); 
+      setAllUsers(data || []); 
       
-      setAvailableParticipants(data || []); 
+      setAvailableUsers(data || []); 
     } catch (err) {
-      console.error("Fetch participants error:", err);
+      console.error("Fetch users error:", err);
       setError(err.message);
-      setAllParticipants([]);
-      setAvailableParticipants([]);
+      setAllUsers([]);
+      setAvailableUsers([]);
     } finally {
       setIsLoading(false);
     }
@@ -64,8 +64,8 @@ const Calendar = () => {
 
   
   useEffect(() => {
-    fetchParticipants();
-  }, [fetchParticipants]); 
+    fetchUsers();
+  }, [fetchUsers]); 
 
   // 2. Fungsi Fetch Events untuk FullCalendar
   const fetchCalendarEvents = async (fetchInfo) => {
@@ -76,7 +76,7 @@ const Calendar = () => {
     try {
       const response = await fetch(`/api/meetings?startDate=${startDate}&endDate=${endDate}`);
       if (response.status === 401) {
-        router.push('/login');
+        router.push('/sign-in');
         return []; 
       }
       if (!response.ok) {
@@ -95,7 +95,7 @@ const Calendar = () => {
         extendedProps: { 
           agenda: meeting.agenda,
           
-          participantIds: meeting.participants.map(p => p.participant.id), 
+          userIds: meeting.participants.map(p => p.user.id), 
           
           status: meeting.status 
         },
@@ -142,33 +142,33 @@ const Calendar = () => {
     
     
     setEventAgenda(event.extendedProps.agenda || "");
-    const participantIds = event.extendedProps.participantIds || [];
-    setSelectedParticipantIds(participantIds);
+    const userIds = event.extendedProps.userIds || [];
+    setSelectedUserIds(userIds);
     
     
-    setAvailableParticipants(allParticipants.filter(p => !participantIds.includes(p.id)));
+    setAvailableUsers(allUsers.filter(u => !userIds.includes(u.id)));
 
     openModal();
   };
 
-  const handleParticipantSelect = (event) => {
+  const handleUserSelect = (event) => {
     const selectedId = event.target.value; 
-    if (selectedId && !selectedParticipantIds.includes(selectedId)) {
-      const newSelectedIds = [...selectedParticipantIds, selectedId];
-      setSelectedParticipantIds(newSelectedIds);
+    if (selectedId && !selectedUserIds.includes(selectedId)) {
+      const newSelectedIds = [...selectedUserIds, selectedId];
+      setSelectedUserIds(newSelectedIds);
       
-      setAvailableParticipants(allParticipants.filter(p => !newSelectedIds.includes(p.id)));
+      setAvailableUsers(allUsers.filter(u => !newSelectedIds.includes(u.id)));
     }
      
     event.target.value = "";
   };
 
-  const handleRemoveParticipant = (participantIdToRemove) => {
-    const newSelectedIds = selectedParticipantIds.filter((id) => id !== participantIdToRemove);
-    setSelectedParticipantIds(newSelectedIds);
+  const handleRemoveUser = (userIdToRemove) => {
+    const newSelectedIds = selectedUserIds.filter((id) => id !== userIdToRemove);
+    setSelectedUserIds(newSelectedIds);
     
-    setAvailableParticipants(
-      allParticipants.filter(p => !newSelectedIds.includes(p.id)).sort((a, b) => a.nama.localeCompare(b.nama))
+    setAvailableUsers(
+      allUsers.filter(u => !newSelectedIds.includes(u.id)).sort((a, b) => a.nama.localeCompare(b.nama))
     );
   };
 
@@ -192,7 +192,7 @@ const Calendar = () => {
       startDateTime: new Date(fullStartDate).toISOString(), 
       endDateTime: new Date(fullEndDate).toISOString(),     
       agenda: eventAgenda,
-      participantIds: selectedParticipantIds, 
+      userIds: selectedUserIds, 
     };
 
     let response;
@@ -214,7 +214,7 @@ const Calendar = () => {
       }
 
       if (response.status === 401) {
-        router.push('/login');
+        router.push('/sign-in');
         return; 
       }
 
@@ -247,16 +247,16 @@ const Calendar = () => {
     setEventAgenda("");
     setStartTime("");
     setEndTime("");
-    setSelectedParticipantIds([]); 
-    setAvailableParticipants([...allParticipants].sort((a, b) => a.nama.localeCompare(b.nama))); 
+    setSelectedUserIds([]); 
+    setAvailableUsers([...allUsers].sort((a, b) => a.nama.localeCompare(b.nama))); 
     setSelectedEvent(null);
     setError(null); 
   };
   
   
-  const getParticipantName = (id) => {
-      const participant = allParticipants.find(p => p.id === id);
-      return participant ? participant.nama : 'Unknown';
+  const getUserName = (id) => {
+      const user = allUsers.find(u => u.id === id);
+      return user ? user.nama : 'Unknown';
   };
 
   return (
@@ -267,7 +267,7 @@ const Calendar = () => {
       
       <div className="custom-calendar flex-1 relative min-h-0"> {}
         <FullCalendar
-          key={allParticipants.length} 
+          key={allUsers.length} 
           ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
@@ -353,34 +353,34 @@ const Calendar = () => {
               </div>
               {/* Peserta Rapat */}
               <div>
-                <label htmlFor="participant-select" className="modal-label mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                <label htmlFor="user-select" className="modal-label mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
                   Peserta Rapat
                 </label>
                 <select
-                  id="participant-select"
-                  onChange={handleParticipantSelect}
+                  id="user-select"
+                  onChange={handleUserSelect}
                   value="" 
                   className="modal-input h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
                 >
                   <option value="" disabled> -- Pilih Peserta -- </option>
                   {}
-                  {availableParticipants.map((participant) => (
-                    <option key={participant.id} value={participant.id}>{participant.nama}</option>
+                  {availableUsers.map((user) => (
+                    <option key={user.id} value={user.id}>{user.nama}</option>
                   ))}
                 </select>
                 {/* Tampilkan peserta terpilih */}
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {selectedParticipantIds.map((id) => (
+                  {selectedUserIds.map((id) => (
                     <div
                       key={id}
                       className="inline-flex items-center space-x-1 py-1 px-3 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-xs font-medium"
                     >
-                      <span>{getParticipantName(id)}</span> {}
+                      <span>{getUserName(id)}</span> {}
                       <button
                         type="button"
-                        onClick={() => handleRemoveParticipant(id)}
+                        onClick={() => handleRemoveUser(id)}
                         className="ml-1 text-blue-600 dark:text-blue-400 hover:text-red-500 dark:hover:text-red-400 font-bold text-sm"
-                        aria-label={`Hapus ${getParticipantName(id)}`}
+                        aria-label={`Hapus ${getUserName(id)}`}
                       >
                         ×
                       </button>

@@ -1,4 +1,3 @@
-
 import prisma from '@/lib/prisma';
 import { formatISO } from 'date-fns';
 import { authenticate } from '@/lib/authMiddleware'; 
@@ -32,7 +31,7 @@ async function handler(req, res) {
       const meetings = await prisma.meeting.findMany({
         where: whereClause,
         include: {
-          participants: { include: { participant: { select: { id: true, nama: true }}}},
+          participants: { include: { user: { select: { id: true, nama: true }}}},
           documents: { select: { id: true, namaFile: true, pathFile: true } }, 
         },
         orderBy: { [sortBy]: order },
@@ -63,7 +62,7 @@ async function handler(req, res) {
     
     
     try {
-      const { namaRapat, startDateTime, endDateTime, agenda, participantIds = [] } = req.body;
+      const { namaRapat, startDateTime, endDateTime, agenda, userIds = [] } = req.body;
 
       if (!namaRapat || !startDateTime || !endDateTime) {
         return res.status(400).json({ message: 'Field wajib: namaRapat, startDateTime, endDateTime' });
@@ -77,14 +76,14 @@ async function handler(req, res) {
           agenda,
           status: 'AKTIF',
           participants: {
-            create: participantIds.map(pId => ({
-              participant: { connect: { id: pId } },
+            create: userIds.map(userId => ({
+              user: { connect: { id: userId } },
             })),
           },
           
           
         },
-        include: { participants: { include: { participant: true }}}
+        include: { participants: { include: { user: true }}}
       });
       res.status(201).json({
         ...newMeeting,
@@ -94,7 +93,7 @@ async function handler(req, res) {
     } catch (error) {
       console.error("Error creating meeting:", error);
       if (error.code === 'P2025') {
-         return res.status(400).json({ message: 'Error: Salah satu ID peserta tidak ditemukan.', details: error.meta });
+         return res.status(400).json({ message: 'Error: Salah satu ID user tidak ditemukan.', details: error.meta });
       }
       res.status(500).json({ message: 'Internal Server Error', error: error.message });
     }

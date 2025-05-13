@@ -6,6 +6,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -18,9 +19,17 @@ model User {
   id        String   @id @default(cuid()) 
   email     String   @unique 
   nama      String
-  password  String   
+  image     String?
+  role      Role @default(DOSEN)
+  tandaTangan   String?
+  meetings    MeetingParticipant[]   
   createdAt DateTime @default(now()) 
   updatedAt DateTime @updatedAt 
+}
+
+enum Role { 
+  DOSEN
+  ADMIN
 }
 
 // Model untuk Rapat
@@ -47,26 +56,13 @@ model Meeting {
 }
 
 
-
-model Participant {
-  id            String    @id @default(cuid())
-  nama          String
-  email         String?   @unique 
-  tandaTangan   String?   
-  meetings      MeetingParticipant[] 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-}
-
-
-
 model MeetingParticipant {
   meetingId     String
-  participantId String
+  userId        String 
   meeting       Meeting     @relation(fields: [meetingId], references: [id], onDelete: Cascade) 
-  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade) 
+  user          User        @relation(fields : [userId], references : [id], onDelete: Cascade)
 
-  @@id([meetingId, participantId])
+  @@id([meetingId, userId])
 }
 
 // Model untuk Dokumen/File Rapat

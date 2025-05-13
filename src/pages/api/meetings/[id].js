@@ -1,4 +1,3 @@
-
 import prisma from '@/lib/prisma';
 import { authenticate } from '@/lib/authMiddleware';
 import { formatISO } from 'date-fns';
@@ -11,7 +10,7 @@ async function handler(req, res) {
       const meeting = await prisma.meeting.findUnique({
         where: { id: meetingId },
         include: { 
-          participants: { include: { participant: true } },
+          participants: { include: { user: true } },
           documents: true,
         }
       });
@@ -29,30 +28,49 @@ async function handler(req, res) {
       res.status(500).json({ message: 'Internal Server Error' });
     }
   } else if (req.method === 'PUT') {
-    
     try {
-      const { namaRapat, startDateTime, endDateTime, agenda, participantIds } = req.body;
+      const { namaRapat, startDateTime, endDateTime, agenda, userIds } = req.body;
+      
+      // If userIds is provided, update participants
+      let updateData = {
+        namaRapat,
+        startDateTime: new Date(startDateTime),
+        endDateTime: new Date(endDateTime),
+        agenda,
+      };
+      
+      // If userIds is provided, update the participants
+      if (userIds && Array.isArray(userIds)) {
+        // First delete all existing participants
+        await prisma.meetingParticipant.deleteMany({
+          where: { meetingId }
+        });
+        
+        // Then add the new ones
+        for (const userId of userIds) {
+          await prisma.meetingParticipant.create({
+            data: {
+              meetingId,
+              userId
+            }
+          });
+        }
+      }
       
       const updatedMeeting = await prisma.meeting.update({
         where: { id: meetingId },
-        data: {
-          namaRapat,
-          startDateTime: new Date(startDateTime),
-          endDateTime: new Date(endDateTime),
-          agenda,
-          
-          
-        },
-        include: { participants: { include: { participant: true }}}
+        data: updateData,
+        include: { participants: { include: { user: true }}}
       });
-       res.status(200).json({
+      
+      res.status(200).json({
         ...updatedMeeting,
         startDateTime: formatISO(new Date(updatedMeeting.startDateTime)),
         endDateTime: formatISO(new Date(updatedMeeting.endDateTime)),
       });
     } catch (error) {
-       console.error(`Error updating meeting ${meetingId}:`, error);
-       res.status(500).json({ message: 'Internal Server Error' });
+      console.error(`Error updating meeting ${meetingId}:`, error);
+      res.status(500).json({ message: 'Internal Server Error' });
     }
   } else if (req.method === 'DELETE') {
     try {
@@ -61,7 +79,7 @@ async function handler(req, res) {
     } catch (error) {
       console.error(`Error deleting meeting ${meetingId}:`, error);
       if (error.code === 'P2025') { 
-          return res.status(404).json({ message: 'Rapat tidak ditemukan' });
+        return res.status(404).json({ message: 'Rapat tidak ditemukan' });
       }
       res.status(500).json({ message: 'Internal Server Error' });
     }

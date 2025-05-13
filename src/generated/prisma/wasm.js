@@ -124,7 +124,9 @@ exports.Prisma.UserScalarFieldEnum = {
   id: 'id',
   email: 'email',
   nama: 'nama',
-  password: 'password',
+  image: 'image',
+  role: 'role',
+  tandaTangan: 'tandaTangan',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -141,18 +143,9 @@ exports.Prisma.MeetingScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
-exports.Prisma.ParticipantScalarFieldEnum = {
-  id: 'id',
-  nama: 'nama',
-  email: 'email',
-  tandaTangan: 'tandaTangan',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-};
-
 exports.Prisma.MeetingParticipantScalarFieldEnum = {
   meetingId: 'meetingId',
-  participantId: 'participantId'
+  userId: 'userId'
 };
 
 exports.Prisma.MeetingDocumentScalarFieldEnum = {
@@ -178,6 +171,11 @@ exports.Prisma.NullsOrder = {
   first: 'first',
   last: 'last'
 };
+exports.Role = exports.$Enums.Role = {
+  DOSEN: 'DOSEN',
+  ADMIN: 'ADMIN'
+};
+
 exports.Status = exports.$Enums.Status = {
   AKTIF: 'AKTIF',
   SELESAI: 'SELESAI',
@@ -187,7 +185,6 @@ exports.Status = exports.$Enums.Status = {
 exports.Prisma.ModelName = {
   User: 'User',
   Meeting: 'Meeting',
-  Participant: 'Participant',
   MeetingParticipant: 'MeetingParticipant',
   MeetingDocument: 'MeetingDocument'
 };

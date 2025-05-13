@@ -1,28 +1,29 @@
 // import { PrismaClient } from '@prisma/client';
 const {PrismaClient} = require("@prisma/client");
 
-
 const prisma = new PrismaClient();
 
 async function main() {
-
-  const participantsData = [
-    { nama: 'Adit', email: 'adit@example.com', tandaTangan: '/uploads/signatures/ttd_adit.jpg' }, 
-    { nama: 'Una', email: 'una@example.com', tandaTangan: '/uploads/signatures/ttd_una.jpg' },
-    { nama: 'Kevin' , email: "kevin@example.com" ,tandaTangan: '/uploads/signatures/ttd_kevin.jpg' },
+  // Delete all existing users
+  await prisma.user.deleteMany({});
+  
+  // Create sample users (previously participants)
+  const usersData = [
+    { nama: 'Adit', email: 'adit@informatika.untan.ac.id', tandaTangan: '/uploads/signatures/ttd_adit.jpg', role: 'DOSEN' }, 
+    { nama: 'Una', email: 'una@informatika.untan.ac.id', tandaTangan: '/uploads/signatures/ttd_una.jpg', role: 'DOSEN' },
+    { nama: 'Kevin', email: "kevin@informatika.untan.ac.id", tandaTangan: '/uploads/signatures/ttd_kevin.jpg', role: 'ADMIN' },
   ];
 
-  for (const p of participantsData) {
-    const participant = await prisma.participant.upsert({
-      where: { email: p.email }, 
-      update: {}, 
-      create: { 
-        nama: p.nama,
-        email: p.email,
-        tandaTangan: p.tandaTangan,
+  for (const userData of usersData) {
+    const user = await prisma.user.create({
+      data: { 
+        nama: userData.nama,
+        email: userData.email,
+        tandaTangan: userData.tandaTangan,
+        role: userData.role,
       },
     });
-    console.log(`Created participant with id: ${participant.id}, name: ${participant.nama}`);
+    console.log(`Created user with id: ${user.id}, name: ${user.nama}`);
   }
 
   console.log(`Seeding finished.`);

@@ -15,56 +15,50 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid()) // ID unik (otomatis)
-  email     String   @unique // Email harus unik
-  nama      String
-  password  String // Akan menyimpan HASH password, bukan password asli
-  createdAt DateTime @default(now()) // Waktu pembuatan (otomatis)
-  updatedAt DateTime @updatedAt // Waktu update terakhir (otomatis)
+  id          String               @id @default(cuid())
+  email       String               @unique
+  nama        String
+  image       String?
+  role        Role                 @default(DOSEN)
+  tandaTangan String?
+  meetings    MeetingParticipant[]
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+}
+
+enum Role {
+  DOSEN
+  ADMIN
 }
 
 // Model untuk Rapat
 model Meeting {
   id             String   @id @default(cuid())
   namaRapat      String
-  startDateTime  DateTime // Tanggal & Waktu Mulai (UTC direkomendasikan)
-  endDateTime    DateTime // Tanggal & Waktu Selesai (UTC direkomendasikan)
-  agenda         String?  @db.Text // Teks panjang untuk agenda (opsional)
-  notulensiRapat String?  @db.Text // Teks panjang untuk notulen (opsional)
-  status         Status   @default(AKTIF) // Status default saat dibuat
+  startDateTime  DateTime
+  endDateTime    DateTime
+  agenda         String?  @db.Text
+  notulensiRapat String?  @db.Text
+  status         Status   @default(AKTIF)
 
-  // Relasi Many-to-Many ke Participant melalui MeetingParticipant
   participants MeetingParticipant[]
-  // Relasi One-to-Many ke MeetingDocument
-  documents    MeetingDocument[]
+
+  documents MeetingDocument[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Index untuk performa query
   @@index([status])
   @@index([startDateTime])
 }
 
-// Model untuk Peserta Rapat
-model Participant {
-  id          String               @id @default(cuid())
-  nama        String
-  email       String?              @unique // Opsional, tapi bagus jika unik
-  tandaTangan String? // Path/URL ke file gambar tanda tangan
-  meetings    MeetingParticipant[] // Relasi ke rapat yang dihadiri
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
-}
-
-// Tabel Penghubung (Junction Table) untuk Meeting & Participant
 model MeetingParticipant {
-  meetingId     String
-  participantId String
-  meeting       Meeting     @relation(fields: [meetingId], references: [id], onDelete: Cascade) // Jika meeting dihapus, record ini ikut terhapus
-  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade) // Jika participant dihapus, record ini ikut terhapus
+  meetingId String
+  userId    String
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@id([meetingId, participantId]) // Composite Primary Key
+  @@id([meetingId, userId])
 }
 
 // Model untuk Dokumen/File Rapat

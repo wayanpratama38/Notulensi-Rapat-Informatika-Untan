@@ -62,7 +62,7 @@ async function handler(req, res) {
       include: {
         participants: {
           include: {
-            participant: true, 
+            user: true, 
           },
         },
         documents: true, 
@@ -95,9 +95,9 @@ async function handler(req, res) {
       ...(meeting.participants?.map((mp, index) => {
         let signatureContent = { text: '(Tidak Ada)', italics: true, alignment: 'center', fontSize: 9 };
         
-        if (mp.participant?.tandaTangan) {
-          const signaturePathFromDB = mp.participant.tandaTangan;
-          console.log(`Processing signature for ${mp.participant.nama}. Path from DB: "${signaturePathFromDB}"`)
+        if (mp.user?.tandaTangan) {
+          const signaturePathFromDB = mp.user.tandaTangan;
+          console.log(`Processing signature for ${mp.user.nama}. Path from DB: "${signaturePathFromDB}"`)
           
           
           const signatureDataUrl = imagePathToDataUrl(signaturePathFromDB);
@@ -109,7 +109,7 @@ async function handler(req, res) {
         }
         return [
           (index + 1).toString(),
-          mp.participant?.nama || 'N/A',
+          mp.user?.nama || 'N/A',
           signatureContent
         ];
       }) || [
