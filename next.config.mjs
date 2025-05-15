@@ -12,6 +12,8 @@ const nextConfig = {
     compiler:{
         removeConsole: process.env.NODE_ENV === "production",
     },
+    reactStrictMode : true,
+    distDir: '.next',
     webpack(config) {
         // Add SVG support
         config.module.rules.push({
