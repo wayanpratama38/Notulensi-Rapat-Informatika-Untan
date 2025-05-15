@@ -53,6 +53,7 @@ export function DataTableRapat() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearchInput = useDebounce(searchInput, 300);
+  const [isDownloading, setIsDownloading] = useState(false);
 
 
   const [isBulkActionMenuVisible, setIsBulkActionMenuVisible] = useState(false);
@@ -204,10 +205,26 @@ export function DataTableRapat() {
       }
   }, [fetchData, router]);
 
+  // Memoize downloadDataRapat untuk menghindari panggilan ganda
+  const memoizedDownloadRapat = useCallback(async (meetingId) => {
+    console.log(`Fetching data for meeting ${meetingId}`);
+    return await downloadDataRapat(meetingId);
+  }, []);
+
+  // Perbaiki download utility
   const handleDownloadLaporan = useCallback(async (meetingId, namaRapat) => {
      if (!meetingId) return;
+     
+     // Jika sudah dalam proses download, jangan mulai download baru
+     if (isDownloading) {
+       console.log("Download already in progress, skipping...");
+       return;
+     }
+     
       try {
-          const blob = await downloadDataRapat(meetingId);
+          console.log(`Starting download for meeting ${namaRapat}`);
+          setIsDownloading(true);
+          const blob = await memoizedDownloadRapat(meetingId);
           downloadPdf(blob,`Notulensi_${namaRapat}.pdf`);
       } catch (err) { 
         if(err.message === "Unauthorized") {
@@ -215,8 +232,10 @@ export function DataTableRapat() {
           return;
         }
         alert(`Error: ${err.message}`); 
+      } finally {
+        setIsDownloading(false);
       }
-  }, [router]);
+  }, [router, isDownloading, memoizedDownloadRapat]);
 
  
   const columns = useMemo(() => [
@@ -414,29 +433,67 @@ export function DataTableRapat() {
         return;
     }
 
-    if (window.confirm(`Laporan untuk ${meetingsToDownload.length} rapat terpilih (status ARSIP) akan diunduh satu per satu. Lanjutkan?`)) {
-      // No global loading for multiple downloads to keep UI responsive
-      let downloadInitiated = 0;
-      for (const meeting of meetingsToDownload) {
-        // Re-using the single download handler
-        await handleDownloadLaporan(meeting.id, meeting.namaRapat);
-        downloadInitiated++;
-         // Optional: Add a small delay if triggering too many downloads too quickly causes issues
-        // await new Promise(resolve => setTimeout(resolve, 200));
-      }
-      if(downloadInitiated > 0) {
-        // alert(`${downloadInitiated} proses unduh laporan telah dimulai.`);
-      }
-      table.resetRowSelection();
+    // Jika hanya 1 file yang dipilih, gunakan handleDownloadLaporan untuk single file
+    if (meetingsToDownload.length === 1) {
+      const meeting = meetingsToDownload[0];
+      handleDownloadLaporan(meeting.id, meeting.namaRapat);
       closeBulkActionMenu();
+      table.resetRowSelection();
+      return;
     }
-  }, [selectedRowsData, handleDownloadLaporan, table, closeBulkActionMenu]);
+
+    if (window.confirm(`Laporan untuk ${meetingsToDownload.length} rapat terpilih (status ARSIP) akan diunduh satu per satu. Lanjutkan?`)) {
+      // Aktifkan loading untuk batch download
+      setIsDownloading(true);
+      
+      try {
+        // No global loading for multiple downloads to keep UI responsive
+        let downloadInitiated = 0;
+        for (const meeting of meetingsToDownload) {
+          // Gunakan try/catch untuk setiap download, tapi jangan tampilkan loading per item
+          try {
+            const blob = await memoizedDownloadRapat(meeting.id);
+            downloadPdf(blob, `Notulensi_${meeting.namaRapat}.pdf`);
+            downloadInitiated++;
+          } catch (err) {
+            console.error(`Error downloading report for meeting ${meeting.namaRapat}:`, err);
+          }
+        }
+        
+        if(downloadInitiated > 0) {
+          // alert(`${downloadInitiated} proses unduh laporan telah dimulai.`);
+        }
+      } catch (err) {
+        console.error("Error in bulk download:", err);
+      } finally {
+        setIsDownloading(false);
+        table.resetRowSelection();
+        closeBulkActionMenu();
+      }
+    }
+  }, [selectedRowsData, memoizedDownloadRapat, table, closeBulkActionMenu, handleDownloadLaporan]);
   // --- END BULK ACTION LOGIC ---
 
 
   return (
     <div className="w-full font-outfit bg-background-body p-5 text-text-primary">
       {error && <div className="text-red-500 dark:text-error-400 mb-4 border border-red-500 dark:border-error-500 p-2.5 rounded-md text-sm">Error: {error}</div>}
+
+      {/* Loading spinner untuk download */}
+      {isDownloading && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
+          <div className="text-center bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl">
+            <div role="status" className="mb-4">
+              <svg aria-hidden="true" className="inline w-12 h-12 text-gray-200 animate-spin dark:text-gray-600 fill-blue-600" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/>
+                <path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill"/>
+              </svg>
+              <span className="sr-only">Loading...</span>
+            </div>
+            <p className="text-gray-700 dark:text-gray-300 font-medium">Sedang mengunduh dokumen...</p>
+          </div>
+        </div>
+      )}
 
        <div className="flex items-center mb-5 gap-3 flex-wrap">
         <input type="text" placeholder="Filter nama rapat..."
@@ -450,10 +507,10 @@ export function DataTableRapat() {
           className={`${baseSelectClass} basis-[200px]`}
           style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='${encodeURIComponent('var(--color-text-secondary)')}'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd' /%3E%3C/svg%3E")`}}
         >
-          <option value="" className="bg-background-secondary text-text-primary">Semua Status</option>
-          <option value="AKTIF" className="bg-background-secondary text-text-primary">Aktif</option>
-          <option value="SELESAI" className="bg-background-secondary text-text-primary">Selesai</option>
-          <option value="ARSIP" className="bg-background-secondary text-text-primary">Arsip</option>
+          <option value="" className="bg-background-secondary  dark:bg-gray-300  text-text-primary">Semua Status</option>
+          <option value="AKTIF" className="bg-background-secondary  dark:bg-gray-300 text-text-primary">Aktif</option>
+          <option value="SELESAI" className="bg-background-secondary  dark:bg-gray-300 text-text-primary">Selesai</option>
+          <option value="ARSIP" className="bg-background-secondary  dark:bg-gray-300 text-text-primary">Arsip</option>
         </select>
 
         {/* --- BULK ACTION BUTTON --- */}
@@ -479,7 +536,12 @@ export function DataTableRapat() {
                             <button
                                 key={action.label}
                                 type="button"
-                                onClick={() => { action.handler(); }} 
+                                onClick={(e) => { 
+                                    // Hentikan event propagation untuk mencegah events bubbling
+                                    e.stopPropagation();
+                                    // Eksekusi action item
+                                    action.handler(e);
+                                }}
                                 className={clsx(
                                     "block w-full text-left px-3 py-2 cursor-pointer text-text-primary bg-white hover:bg-background-tertiary text-sm",
                                     action.isDanger && "text-error-500 hover:bg-error-subtle hover:text-error-600"
@@ -641,18 +703,18 @@ export function DataTableRapat() {
         <Modal
             isOpen={isOpen}
             onClose={closeModal} // Use the new closeModal
-            className="max-w-2xl w-full m-4"
+            className="max-w-[700px] p-6 lg:p-10 bg-white dark:bg-gray-800 rounded-lg shadow-xl"
         >
-            <div className="flex flex-col bg-background-primary rounded-lg shadow-xl max-h-[85vh]">
-                <div className="px-6 py-4 border-b border-border-default">
-                    <h5 className="text-lg font-semibold text-text-primary">
+            <div className="flex flex-col px-2 overflow-y-auto max-h-[80vh] custom-scroll">
+                <div>
+                    <h5 className="mb-2 text-gray-900 dark:text-white text-lg font-semibold modal-title">
                         Lengkapi Dokumen Rapat
                     </h5>
-                    <p className="text-sm text-text-secondary mt-1">
-                        Untuk: <strong className="text-brand-400">{rapatUntukModal.namaRapat}</strong>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Untuk: <strong className="text-black dark:text-white">{rapatUntukModal.namaRapat}</strong>
                     </p>
                     {/* Modal-specific error */}
-                    {error && rapatUntukModal && <p className="text-sm text-error-500 dark:text-error-400 mt-2">{error}</p>}
+                    {error && rapatUntukModal && <p className="text-sm text-red-500  mt-2">{error}</p>}
                 </div>
 
                 <div className="px-6 py-5 flex-grow overflow-y-auto space-y-6">
@@ -672,14 +734,14 @@ export function DataTableRapat() {
                     </div>
                     <div>
                          <label htmlFor="doc-file" className="block text-sm font-medium text-text-secondary mb-1.5">
-                            Upload File Dokumen (Maks 5)
+                            Upload File Dokumen (Maks 6)
                         </label>
                          <input
                             id="doc-file"
                             type="file"
                             multiple
                             onChange={handleFileChange}
-                            accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                            accept=".png,.jpg,.jpeg"
                             className="block w-full text-sm text-text-secondary cursor-pointer
                                 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0
                                 file:text-sm file:font-semibold
@@ -688,7 +750,7 @@ export function DataTableRapat() {
                                 focus:outline-none focus:ring-1 focus:ring-border-focus"
                             disabled={isSubmitting}
                         />
-                        <p className="mt-1 text-xs text-text-tertiary">PDF, DOC, DOCX, PNG, JPG (MAX. 5MB per file)</p>
+                        <p className="mt-1 text-xs text-text-tertiary">PNG & JPG (MAX. 5MB per file)</p>
                         {filesToUpload.length > 0 && (
                            <ul className="mt-2 list-disc list-inside text-xs text-success-500 dark:text-success-400 space-y-1">
                              {filesToUpload.map((file, index) => (
@@ -702,7 +764,7 @@ export function DataTableRapat() {
                 <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border-default">
                     <button
                         onClick={closeModal}
-                        type="button"
+                        type="button" 
                         disabled={isSubmitting}
                         className={clsx(
                             baseButtonClass,
@@ -763,14 +825,26 @@ export function DataTableRapat() {
               } else if (currentStatus === "SELESAI") {
                 menuItems.push({
                     label: "Lengkapi Dokumen",
-                    action: () => handleLengkapiDokumenClick(activeRapatForMenu),
+                    action: () => {
+                      closeActionMenu();
+                      handleLengkapiDokumenClick(activeRapatForMenu);
+                    },
                     className: "menu-dropdown-item"
                 });
                 menuItems.push(hapusAction);
               } else if (currentStatus === "ARSIP") {
                 menuItems.push({
                     label: "Download Laporan",
-                    action: () => handleDownloadLaporan(activeRapatForMenu?.id, activeRapatForMenu?.namaRapat),
+                    action: (e) => {
+                      // Hentikan event propagation
+                      e.stopPropagation();
+                      // Tutup menu dan mulai download
+                      closeActionMenu();
+                      // Pastikan timeout kecil untuk menunggu menu benar-benar tertutup
+                      setTimeout(() => {
+                        handleDownloadLaporan(activeRapatForMenu?.id, activeRapatForMenu?.namaRapat);
+                      }, 100);
+                    },
                     className: "menu-dropdown-item"
                 });
                 menuItems.push(hapusAction);
@@ -784,7 +858,12 @@ export function DataTableRapat() {
                     "block w-full text-left px-4 py-2 text-sm cursor-pointer transition-colors duration-150",
                     item.className
                   )}
-                  onClick={() => { item.action(); closeActionMenu(); }}
+                  onClick={(e) => { 
+                    // Hentikan event propagation untuk mencegah events bubbling
+                    e.stopPropagation();
+                    // Eksekusi action item
+                    item.action(e);
+                  }}
                 >
                   {item.label}
                 </button>

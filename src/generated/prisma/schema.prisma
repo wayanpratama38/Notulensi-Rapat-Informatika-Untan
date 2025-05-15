@@ -17,8 +17,8 @@ datasource db {
 model User {
   id          String               @id @default(cuid())
   email       String               @unique
+  password    String
   nama        String
-  image       String?
   role        Role                 @default(DOSEN)
   tandaTangan String?
   meetings    MeetingParticipant[]

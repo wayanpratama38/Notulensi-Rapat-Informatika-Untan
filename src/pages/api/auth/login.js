@@ -1,4 +1,3 @@
-
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -18,20 +17,34 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Log request for debugging
+    console.log(`Login attempt for email: ${email}`);
+    
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
+      console.log(`User not found: ${email}`);
       return res.status(401).json({ message: 'Email atau password salah' });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
+      console.log(`Invalid password for user: ${email}`);
       return res.status(401).json({ message: 'Email atau password salah' });
     }
 
-    const tokenPayload = { userId: user.id, email: user.email, nama: user.nama };
+    // Include role in the token payload
+    const tokenPayload = { 
+      userId: user.id, 
+      email: user.email, 
+      nama: user.nama,
+      role: user.role 
+    };
+    
+    // Log the payload for debugging
+    console.log('Creating token with payload:', tokenPayload);
+    
     const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '1d' }); 
 
-    
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV !== 'development', 
@@ -41,9 +54,10 @@ export default async function handler(req, res) {
     };
     res.setHeader('Set-Cookie', serialize(COOKIE_NAME, token, cookieOptions));
 
-    
+    // Return user data without password
     const { password: _, ...userWithoutPassword } = user;
-    res.status(200).json({ message: 'Login berhasil', user: userWithoutPassword  });
+    console.log(`Login successful for user: ${email}, role: ${user.role}`);
+    res.status(200).json({ message: 'Login berhasil', user: userWithoutPassword });
 
   } catch (error) {
     console.error('Login error:', error);

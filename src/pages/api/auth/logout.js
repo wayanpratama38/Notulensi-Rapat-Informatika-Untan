@@ -3,7 +3,7 @@ import { serialize } from 'cookie';
 
 const COOKIE_NAME = 'authToken'; // Pastikan sama dengan yang diset saat login
 
-export default function handler(req, res) {
+export default function logoutHandler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     return res.status(405).json({ message: 'Method not allowed' });

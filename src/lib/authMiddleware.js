@@ -6,8 +6,6 @@ const COOKIE_NAME = 'authToken';
 
 export function authenticate(handler) {
   return async (req, res) => {
-    
-
     // Cek apakah parse ada
     if (typeof parse !== 'function') {
        console.error('ERROR: parse function is not available!');
@@ -21,9 +19,23 @@ export function authenticate(handler) {
          console.log(`Auth Middleware: Token "${COOKIE_NAME}" not found.`);
          return res.status(401).json({ message: 'Akses ditolak. Sesi tidak ditemukan.' });
      }
+     
      try {
        const decoded = jwt.verify(token, JWT_SECRET);
-       req.user = decoded;
+       
+       // Log the decoded token for debugging
+       console.log("Auth Middleware: Decoded token:", {
+         userId: decoded.userId,
+         email: decoded.email,
+         role: decoded.role || 'No role in token'
+       });
+       
+       // Make sure to include role in the user object
+       req.user = {
+         ...decoded,
+         role: decoded.role // Ensure role is explicitly included
+       };
+       
        return handler(req, res);
      } catch (ex) {
        console.error("Auth Middleware: Invalid token -", ex.message);

@@ -201,6 +201,8 @@
   --z-index-9999: 9999;
   --z-index-99999: 99999;
   --z-index-999999: 999999;
+  --opener-top: 0px;
+  --opener-left: 0px;
 }
 
 @media (prefers-color-scheme : dark){
@@ -469,7 +471,33 @@ body {
 .input-date-icon::-webkit-inner-spin-button,
 .input-date-icon::-webkit-calendar-picker-indicator { opacity: 0; -webkit-appearance: none; }
 
+/* Date picker styles to force it open upwards */
+.date-picker-open-up::-webkit-calendar-picker-indicator {
+  position: absolute;
+  top: calc(var(--opener-top) - 240px);
+  left: 50%;
+  transform: translateX(-50%);
+}
 
+.date-picker-open-up input[type="date"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  top: calc(var(--opener-top) - 240px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+@supports (-moz-appearance:none) {
+  .date-picker-open-up input[type="date"] {
+    position: relative;
+  }
+  
+  .date-picker-open-up input[type="date"]::-moz-calendar-picker-indicator {
+    position: absolute;
+    top: calc(var(--opener-top) - 240px);
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
 
 /* Table Styling */
 
@@ -635,7 +663,7 @@ body {
 
 
 .custom-scroll::-webkit-scrollbar {
-  width: 6px;
+  width: 0px;
 }
 
 .custom-scroll::-webkit-scrollbar-track {
@@ -656,4 +684,20 @@ body {
 }
 .dark .custom-scroll {
   scrollbar-color: #4a5568 transparent;
+}
+
+/* Custom time picker styles to hide scrollbars */
+.time-picker-scroll {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+
+.time-picker-scroll::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+
+/* Date picker styles to force it open upwards */
+:root {
+  --opener-top: 0px;
+  --opener-left: 0px;
 }

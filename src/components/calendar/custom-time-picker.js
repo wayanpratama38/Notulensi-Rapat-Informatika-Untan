@@ -16,12 +16,11 @@ const CustomTimePicker = ({ value, onChange, idPrefix = "time" }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [currentHour, setCurrentHour] = useState('09');
   const [currentMinute, setCurrentMinute] = useState('00');
-  const [popoverPosition, setPopoverPosition] = useState({ top: '100%' }); 
+  const [popoverPosition, setPopoverPosition] = useState({ bottom: '100%' }); // Default to open upwards
 
   const pickerRef = useRef(null);
   const triggerRef = useRef(null); 
   const popoverRef = useRef(null); 
-
   const hourScrollRef = useRef(null);
   const minuteScrollRef = useRef(null);
 
@@ -39,49 +38,50 @@ const CustomTimePicker = ({ value, onChange, idPrefix = "time" }) => {
     }
   }, [value]);
 
-  
+  // Scroll to selected values
   useEffect(() => {
     if (isOpen) {
-      const scrollToOption = (scrollRef, optionValue, optionsArray) => {
+      const scrollToSelected = (scrollRef, selectedValue, options) => {
         if (scrollRef.current) {
-          const optionIndex = optionsArray.indexOf(optionValue);
-          const optionElement = scrollRef.current.children[optionIndex];
-          if (optionElement) {
-            optionElement.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+          const selectedIndex = options.indexOf(selectedValue);
+          if (selectedIndex !== -1) {
+            const selectedElement = scrollRef.current.children[selectedIndex];
+            if (selectedElement) {
+              selectedElement.scrollIntoView({
+                block: 'center',
+                inline: 'nearest',
+                behavior: 'smooth'
+              });
+            }
           }
         }
       };
       
       const timer = setTimeout(() => {
-        scrollToOption(hourScrollRef, currentHour, hourOptions);
-        scrollToOption(minuteScrollRef, currentMinute, minuteOptions);
-      }, 50); 
+        scrollToSelected(hourScrollRef, currentHour, hourOptions);
+        scrollToSelected(minuteScrollRef, currentMinute, minuteOptions);
+      }, 50);
+      
       return () => clearTimeout(timer);
     }
   }, [isOpen, currentHour, currentMinute, hourOptions, minuteOptions]);
 
-  
+  // Position the popover
   useEffect(() => {
-    if (isOpen && triggerRef.current && popoverRef.current) {
-      const triggerRect = triggerRef.current.getBoundingClientRect();
-      const popoverHeight = popoverRef.current.offsetHeight;
-      const spaceBelow = window.innerHeight - triggerRect.bottom;
-      const spaceAbove = triggerRect.top;
-
-      
-      if (spaceBelow >= popoverHeight + 10 || spaceBelow >= spaceAbove) { 
-        setPopoverPosition({ top: `${triggerRect.height + 4}px` }); 
-      } else {
-        setPopoverPosition({ bottom: `${triggerRect.height + 4}px` });
-      }
+    if (isOpen && triggerRef.current) {
+      // Always position above the trigger button
+      const buttonHeight = triggerRef.current.offsetHeight;
+      setPopoverPosition({ 
+        bottom: `${buttonHeight + 4}px`,
+        left: '50%',
+        transform: 'translateX(-50%)'
+      });
     }
   }, [isOpen]);
 
-
-  
+  // Close on click outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      
       if (pickerRef.current && !pickerRef.current.contains(event.target)) {
         setIsOpen(false);
       }
@@ -90,7 +90,7 @@ const CustomTimePicker = ({ value, onChange, idPrefix = "time" }) => {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []); 
+  }, []);
 
   const handleHourChange = (hour) => {
     setCurrentHour(hour);
@@ -126,46 +126,60 @@ const CustomTimePicker = ({ value, onChange, idPrefix = "time" }) => {
           id={`${idPrefix}-picker-popover`}
           role="dialog"
           aria-modal="true"
-          className="absolute z-20 w-60 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 p-2" // Increased z-index
-          style={{ ...popoverPosition, left: 0 }}
+          className="absolute z-50 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 p-2"
+          style={popoverPosition}
         >
-          <div className="flex justify-around">
+          <div className="flex items-center justify-center w-44">
             {/* Hour Column */}
-            <div ref={hourScrollRef} className="h-48 overflow-y-auto custom-scroll pr-1 border-r border-gray-200 dark:border-gray-700">
-              {hourOptions.map((hour) => (
-                <div
-                  key={`${idPrefix}-hour-${hour}`}
-                  onClick={() => handleHourChange(hour)}
-                  className={clsx(
-                    "p-2 text-center cursor-pointer rounded-md text-sm",
-                    "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700",
-                    hour === currentHour && "bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 font-semibold"
-                  )}
-                  role="option"
-                  aria-selected={hour === currentHour}
-                >
-                  {hour}
-                </div>
-              ))}
+            <div className="w-1/2 pr-1">
+              <div className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                Jam
+              </div>
+              <div 
+                ref={hourScrollRef} 
+                className="h-32 overflow-y-auto time-picker-scroll border border-gray-200 dark:border-gray-700 rounded"
+              >
+                {hourOptions.map((hour) => (
+                  <div
+                    key={`hour-${hour}`}
+                    onClick={() => handleHourChange(hour)}
+                    className={clsx(
+                      "p-2 text-center cursor-pointer",
+                      hour === currentHour 
+                        ? "bg-blue-500 text-white" 
+                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    )}
+                  >
+                    {hour}
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Minute Column */}
-            <div ref={minuteScrollRef} className="h-48 overflow-y-auto custom-scroll pl-1 pr-1 border-r border-gray-200 dark:border-gray-700">
-              {minuteOptions.map((minute) => (
-                <div
-                  key={`${idPrefix}-minute-${minute}`}
-                  onClick={() => handleMinuteChange(minute)}
-                  className={clsx(
-                    "p-2 text-center cursor-pointer rounded-md text-sm",
-                    "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700",
-                    minute === currentMinute && "bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 font-semibold"
-                  )}
-                  role="option"
-                  aria-selected={minute === currentMinute}
-                >
-                  {minute}
-                </div>
-              ))}
+            <div className="w-1/2 pl-1">
+              <div className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                Menit
+              </div>
+              <div 
+                ref={minuteScrollRef} 
+                className="h-32 overflow-y-auto time-picker-scroll border border-gray-200 dark:border-gray-700 rounded"
+              >
+                {minuteOptions.map((minute) => (
+                  <div
+                    key={`minute-${minute}`}
+                    onClick={() => handleMinuteChange(minute)}
+                    className={clsx(
+                      "p-2 text-center cursor-pointer",
+                      minute === currentMinute 
+                        ? "bg-blue-500 text-white" 
+                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    )}
+                  >
+                    {minute}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
