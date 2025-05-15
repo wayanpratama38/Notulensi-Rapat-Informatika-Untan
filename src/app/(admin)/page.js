@@ -1,5 +1,5 @@
-import {redirect} from "next/navigation";
+import { redirect } from "next/navigation";
 
-export default function AdminRootPage() { 
-    redirect("/")
+export default function AdminRootPage() {
+  return redirect("/dashboard");
 }
