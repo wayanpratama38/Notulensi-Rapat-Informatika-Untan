@@ -4,10 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "next lint",
-    "deploy": "prisma migrate deploy && prisma db seed && next build"
+    "lint": "next lint"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
@@ -41,6 +40,7 @@
     "autoprefixer": "^10.4.21",
     "bcryptjs": "^3.0.2",
     "cookie": "^1.0.2",
+    "cross-env": "^7.0.3",
     "date-fns": "^4.1.0",
     "eslint": "^9",
     "eslint-config-next": "15.3.1",

@@ -4,50 +4,64 @@ import PdfPrinter from 'pdfmake';
 import fs from 'fs';
 import path from 'path';
 
-
-
-const fontsPath = path.join(process.cwd(), 'public/fonts'); 
+// Use environment variables or default paths for fonts
+const FONTS_DIR = process.env.FONTS_DIR
+// Make sure paths work in both development and production
 const fonts = {
   Roboto: {
-    normal: path.join(fontsPath, 'Roboto-Regular.ttf'),
-    bold: path.join(fontsPath, 'Roboto-Medium.ttf'), 
-    italics: path.join(fontsPath, 'Roboto-Italic.ttf'),
-    bolditalics: path.join(fontsPath, 'Roboto-MediumItalic.ttf'), 
+    normal: path.resolve(FONTS_DIR, 'Roboto-Regular.ttf'),
+    bold: path.resolve(FONTS_DIR, 'Roboto-Medium.ttf'), 
+    italics: path.resolve(FONTS_DIR, 'Roboto-Italic.ttf'),
+    bolditalics: path.resolve(FONTS_DIR, 'Roboto-MediumItalic.ttf'), 
   }
 };
 
-
+// Improved helper function to prevent junction points scanning
 const imagePathToDataUrl = (filePathRelToPublic) => {
   if (!filePathRelToPublic) return null;
+  
+  // Skip all file operations during build time
+  if (process.env.NODE_ENV === 'production' && process.env.NEXT_PHASE === 'phase-production-build') {
+    return null;
+  }
+  
   try {
+    // Prevent path traversal by normalizing and validating the path
+    const normalizedPath = path.normalize(filePathRelToPublic).replace(/^(\.\.[\/\\])+/, '');
     
-    const absolutePath = path.join(process.cwd(), 'public', filePathRelToPublic);
-    console.log(`Attempting to read image: ${absolutePath}`); 
+    // Ensure we only access files inside the public directory
+    const publicDir = path.resolve(process.cwd(), 'public');
+    const absolutePath = path.join(publicDir, normalizedPath);
+    
+    // Check if the resolved path is still within public directory to prevent traversal
+    if (!absolutePath.startsWith(publicDir)) {
+      console.warn(`Security warning: Attempted to access file outside public directory: ${absolutePath}`);
+      return null;
+    }
+    
+    console.log(`Attempting to read image: ${absolutePath}`);
+    
     if (fs.existsSync(absolutePath)) {
       const img = fs.readFileSync(absolutePath);
       const extension = path.extname(filePathRelToPublic).substring(1).toLowerCase();
-      let mimeType = `image/${extension}`; 
+      let mimeType = `image/${extension}`;
       if (extension === 'jpg' || extension === 'jpeg') mimeType = 'image/jpeg';
       
-      
-
       return `data:${mimeType};base64,${Buffer.from(img).toString('base64')}`;
     } else {
       console.warn(`Image file not found at: ${absolutePath}`);
-      return null; 
+      return null;
     }
   } catch (e) {
-    console.error("Error reading image for PDF:", filePathRelToPublic, e);
-    return null; 
+    console.error("Error reading image for PDF:", e);
+    return null;
   }
 };
-
 
 async function handler(req, res) {
   const { id: meetingId } = req.query;
 
   console.log('Absolute Font Path (Normal):', fonts.Roboto.normal);
-
 
   if (req.method !== 'GET') {
     res.setHeader('Allow', ['GET']);
@@ -55,6 +69,11 @@ async function handler(req, res) {
   }
 
   try {
+    // Skip expensive operations during build time
+    if (process.env.NODE_ENV === 'production' && process.env.NEXT_PHASE === 'phase-production-build') {
+      // Return a dummy response during build time
+      return res.status(200).json({ message: 'PDF generation skipped during build' });
+    }
     
     const meeting = await prisma.meeting.findUnique({
       where: { id: meetingId },

@@ -1,6 +1,5 @@
 import prisma from '../../../lib/prisma';
 import bcrypt from 'bcryptjs';
-// import { authenticate } from '@/lib/authMiddleware';
 
 async function handler(req, res) {
   if (req.method === 'GET') {

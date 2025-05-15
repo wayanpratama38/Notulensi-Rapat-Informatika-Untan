@@ -13,12 +13,15 @@ const nextConfig = {
         removeConsole: process.env.NODE_ENV === "production",
     },
     webpack(config) {
+        // Add SVG support
         config.module.rules.push({
             test: /\.svg$/,
             use : ["@svgr/webpack"]
-        })
+        });
         return config;
-    }
+    },
+   
+
 };
 
 export default nextConfig;
