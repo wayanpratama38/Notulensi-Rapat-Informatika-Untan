@@ -12,6 +12,7 @@ const nextConfig = {
     compiler:{
         removeConsole: process.env.NODE_ENV === "production",
     },
+    reactStrictMode : true,
     webpack(config) {
         config.module.rules.push({
             test: /\.svg$/,

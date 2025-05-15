@@ -19,7 +19,6 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@auth/prisma-adapter": "^2.9.1",
     "@daypilot/daypilot-lite-react": "^3.32.1",
     "@eslint/eslintrc": "^3",
     "@fullcalendar/core": "^6.1.17",
