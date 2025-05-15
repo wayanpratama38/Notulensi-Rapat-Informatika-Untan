@@ -111,11 +111,11 @@ export const UserProvider = ({ children }) => {
 
   // Debug output
   useEffect(() => {
-    console.log("Current user state:", { 
-      user: user ? { ...user } : null,
-      isAdmin,
-      isDosen
-    });
+    // console.log("Current user state:", { 
+    //   user: user ? { ...user } : null,
+    //   isAdmin,
+    //   isDosen
+    // });
   }, [user, isAdmin, isDosen]);
 
   return (

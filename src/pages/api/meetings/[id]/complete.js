@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma';
 import upload from '@/lib/multerUpload'; 
 import { authenticate } from '@/lib/authMiddleware'; 
+import multer from 'multer';
 
 
 export const config = {
@@ -47,12 +48,17 @@ async function handler(req, res) {
     
     
     
-    await runMiddleware(req, res, upload.array('dokumenRapat', 5));
+    await runMiddleware(req, res, upload.array('dokumenRapat', 6));
 
-    
     const { notulensiRapat } = req.body; 
     const files = req.files; 
-
+    
+    // Pastikan tidak ada lebih dari 6 file yang diupload
+    if (files && files.length > 6) {
+      return res.status(400).json({ 
+        message: `Terlalu banyak file! Maksimal 6 file yang diperbolehkan. Anda mengunggah ${files.length} file.` 
+      });
+    }
     
     if (!notulensiRapat && (!files || files.length === 0)) {
       
@@ -108,8 +114,14 @@ async function handler(req, res) {
     if (error.code === 'LIMIT_FILE_SIZE') {
         return res.status(400).json({ message: 'Ukuran salah satu file melebihi batas 5MB.' });
     }
+    if (error.code === 'LIMIT_FILE_COUNT') {
+        return res.status(400).json({ message: `Terlalu banyak file diunggah. Maksimal 6 file diperbolehkan. Anda mencoba mengunggah lebih banyak.` });
+    }
     if (error.message.includes('Tipe file tidak diizinkan')) {
         return res.status(400).json({ message: error.message });
+    }
+    if (error instanceof multer.MulterError) {
+        return res.status(400).json({ message: `Kesalahan unggah file: ${error.message}. Pastikan tidak lebih dari 6 file.` });
     }
     
     res.status(500).json({ message: 'Internal Server Error', error: error.message });

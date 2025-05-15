@@ -12,6 +12,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useRouter } from 'next/navigation';
+import Swal from 'sweetalert2';
 
 import { useModal } from "@/hooks/useModal";
 import { Modal } from "@/components/ui/modal";
@@ -50,6 +51,7 @@ export function DataTableRapat() {
   const [rapatUntukModal, setRapatUntukModal] = useState(null);
   const [notulensiInput, setNotulensiInput] = useState("");
   const [filesToUpload, setFilesToUpload] = useState([]);
+  const [hasAttemptedOverUpload, setHasAttemptedOverUpload] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearchInput = useDebounce(searchInput, 300);
@@ -140,6 +142,7 @@ export function DataTableRapat() {
     setNotulensiInput("");
     setFilesToUpload([]);
     setError(null); // Clear modal-specific errors
+    setHasAttemptedOverUpload(false); // Reset new state
   }, [closeModalHook]);
 
 
@@ -150,22 +153,118 @@ export function DataTableRapat() {
     setNotulensiInput(rapatData.notulensiRapat || "");
     setFilesToUpload([]);
     setIsSubmitting(false);
+    setHasAttemptedOverUpload(false); // Reset new state
+    setError(null); // Clear previous errors from modal
     openModal(); // from useModal hook
   }, [openModal]);
 
   const handleFileChange = (event) => {
     if (event.target.files) {
-      const selectedFiles = Array.from(event.target.files).slice(0, 5);
-      setFilesToUpload(selectedFiles);
+      const newFiles = Array.from(event.target.files);
+
+      if (filesToUpload.length + newFiles.length > 6) {
+        Swal.fire({
+          title: 'Gagal Menambah File!',
+          text: `Anda mencoba menambah ${newFiles.length} file. Total akan menjadi ${filesToUpload.length + newFiles.length} file. Maksimal 6 file diperbolehkan.`,
+          icon: 'error',
+          confirmButtonText: 'Mengerti'
+        });
+        setHasAttemptedOverUpload(true); // Mark attempt
+        
+        const availableSlots = 6 - filesToUpload.length;
+        if (availableSlots > 0) {
+            const filesThatFit = newFiles.slice(0, availableSlots);
+            setFilesToUpload(prevFiles => [...prevFiles, ...filesThatFit]);
+            Swal.fire({
+                title: 'Sebagian File Ditambahkan',
+                text: `Hanya ${filesThatFit.length} file pertama dari pilihan Anda yang ditambahkan untuk menjaga total tidak lebih dari 6. Anda masih memiliki file yang melebihi batas.`,
+                icon: 'warning',
+                confirmButtonText: 'OK'
+            });
+        } else {
+           // If no slots, don't add, but hasAttemptedOverUpload is already true
+        }
+        event.target.value = null; // Clear file input
+        return;
+      }
+      
+      // If adding them doesn't exceed 6
+      setFilesToUpload(prevFiles => [...prevFiles, ...newFiles]);
+      // If this action makes it exactly 6 or less, and previously it was an over-upload attempt, reset the flag IF total is now valid.
+      // This might be tricky if they are still over 6 due to partial add. The button check is more reliable.
+      // For now, let hasAttemptedOverUpload stick until files are removed or modal reset.
+      event.target.value = null; // Clear file input
     }
   };
 
+  const handleRemoveFile = (indexToRemove) => {
+    setFilesToUpload(prevFiles => {
+      const updatedFiles = prevFiles.filter((_, index) => index !== indexToRemove);
+      // After removing, check if the over-upload condition is still an issue or can be cleared
+      if (updatedFiles.length <= 6) {
+        setHasAttemptedOverUpload(false); // Cleared the over-upload condition by removing files
+      }
+      // If updatedFiles.length is still > 6 (shouldn't happen with current handleFileChange but defensive)
+      // then hasAttemptedOverUpload remains true or is re-set true by button logic.
+      return updatedFiles;
+    });
+  };
+
+  // Fungsi untuk mereset jumlah file ke batas maksimum jika terlalu banyak (redundant with new handleFileChange, but keep for safety on modal open)
+  const resetFilesToMaximum = useCallback(() => {
+    if (filesToUpload.length > 6) {
+      Swal.fire({
+        title: 'File Dikurangi Otomatis',
+        text: `Jumlah file terpilih lebih dari 6. File telah dikurangi menjadi 6 (batas maksimum).`,
+        icon: 'info',
+        confirmButtonColor: '#3085d6',
+        confirmButtonText: 'OK'
+      });
+      setFilesToUpload(prev => prev.slice(0, 6));
+      setHasAttemptedOverUpload(false); // Corrected state after auto-trim
+    }
+  }, [filesToUpload.length]); // Removed setFilesToUpload from dependency array as it's being called within
+
+  // Pastikan file tidak melebihi batas saat modal dibuka
+  useEffect(() => {
+    if (isOpen) { // Only run when modal is open
+      if (filesToUpload.length > 6) {
+         resetFilesToMaximum();
+      } else if (filesToUpload.length <=6 ) {
+        // If files are already valid, ensure flag is false if it was true from a previous interaction within same modal session (unlikely but safe)
+        setHasAttemptedOverUpload(false);
+      }
+    }
+  }, [isOpen, filesToUpload.length, resetFilesToMaximum]);
+
   const handleSimpanDokumen = useCallback(async () => {
     if (!rapatUntukModal) return;
-    if (!notulensiInput.trim() && filesToUpload.length === 0) {
-      setError("Harap isi notulensi atau unggah setidaknya satu file dokumen."); // Set error for modal
+
+    if (filesToUpload.length > 6 || hasAttemptedOverUpload) {
+      Swal.fire({
+        title: 'Gagal Menyimpan!',
+        text: `Tidak dapat menyimpan karena ${hasAttemptedOverUpload ? 'Anda mencoba mengunggah lebih dari 6 file' : filesToUpload.length + ' file terpilih (maksimal 6)'}. Silakan periksa kembali jumlah file Anda.`,
+        icon: 'error',
+        confirmButtonColor: '#3085d6',
+        confirmButtonText: 'Mengerti'
+      });
+      // Ensure the UI reflects the over-upload state if not already
+      if (filesToUpload.length > 6 && !hasAttemptedOverUpload) setHasAttemptedOverUpload(true);
       return;
     }
+    
+    if (!notulensiInput.trim() && filesToUpload.length === 0) {
+      Swal.fire({ title: 'Perhatian', text: "Harap isi notulensi atau unggah setidaknya satu file dokumen.", icon: 'warning', confirmButtonColor: '#3085d6', confirmButtonText: 'Mengerti' });
+      setError("Harap isi notulensi atau unggah setidaknya satu file dokumen."); // Keep local error state for now
+      return;
+    }
+
+    const nonImageFiles = filesToUpload.filter(file => !file.type.startsWith('image/'));
+    if (nonImageFiles.length > 0) {
+      Swal.fire({ title: 'Format File Tidak Valid', text: `${nonImageFiles.length} file bukan berupa gambar. Hanya file gambar (JPG, PNG) yang diperbolehkan.`, icon: 'error', confirmButtonColor: '#3085d6', confirmButtonText: 'Mengerti' });
+      return;
+    }
+    
     setIsSubmitting(true);
     setError(null);
     const formData = new FormData();
@@ -173,7 +272,14 @@ export function DataTableRapat() {
     filesToUpload.forEach(file => formData.append('dokumenRapat', file));
     try {
       await completeDataRapat(rapatUntukModal.id,formData);
-      alert(`Dokumen untuk rapat "${rapatUntukModal.namaRapat}" berhasil disimpan.`);
+      // Replace alert with SweetAlert2
+      Swal.fire({
+        title: 'Berhasil!',
+        text: `Dokumen untuk rapat "${rapatUntukModal.namaRapat}" berhasil disimpan.`,
+        icon: 'success',
+        confirmButtonColor: '#3085d6',
+        confirmButtonText: 'OK'
+      });
       closeModal();
       fetchData();
     } catch (err) { 
@@ -181,6 +287,16 @@ export function DataTableRapat() {
         router.push('/sign-in');
         return;
       }
+      
+      // Tampilkan error dalam SweetAlert
+      Swal.fire({
+        title: 'Gagal!',
+        text: err.message,
+        icon: 'error',
+        confirmButtonColor: '#3085d6',
+        confirmButtonText: 'OK'
+      });
+      
       setError(err.message); 
     } // Set error for modal
     finally { setIsSubmitting(false); }
@@ -505,12 +621,11 @@ export function DataTableRapat() {
           value={table.getColumn('status')?.getFilterValue() ?? ''}
           onChange={(e) => table.getColumn('status')?.setFilterValue(e.target.value || undefined)}
           className={`${baseSelectClass} basis-[200px]`}
-          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='${encodeURIComponent('var(--color-text-secondary)')}'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd' /%3E%3C/svg%3E")`}}
         >
-          <option value="" className="bg-background-secondary  dark:bg-gray-300  text-text-primary">Semua Status</option>
-          <option value="AKTIF" className="bg-background-secondary  dark:bg-gray-300 text-text-primary">Aktif</option>
-          <option value="SELESAI" className="bg-background-secondary  dark:bg-gray-300 text-text-primary">Selesai</option>
-          <option value="ARSIP" className="bg-background-secondary  dark:bg-gray-300 text-text-primary">Arsip</option>
+          <option value="" className="bg-white  dark:bg-gray-600  text-black dark:text-white">Semua Status</option>
+          <option value="AKTIF" className="bg-white  dark:bg-gray-600 text-black dark:text-white">Aktif</option>
+          <option value="SELESAI" className="bg-white  dark:bg-gray-600 text-black dark:text-white">Selesai</option>
+          <option value="ARSIP" className="bg-white  dark:bg-gray-600 text-black dark:text-white">Arsip</option>
         </select>
 
         {/* --- BULK ACTION BUTTON --- */}
@@ -748,15 +863,40 @@ export function DataTableRapat() {
                                 file:bg-brand-600 file:text-text-on-brand
                                 hover:file:bg-brand-700
                                 focus:outline-none focus:ring-1 focus:ring-border-focus"
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || filesToUpload.length >= 6}
                         />
                         <p className="mt-1 text-xs text-text-tertiary">PNG & JPG (MAX. 5MB per file)</p>
                         {filesToUpload.length > 0 && (
-                           <ul className="mt-2 list-disc list-inside text-xs text-success-500 dark:text-success-400 space-y-1">
-                             {filesToUpload.map((file, index) => (
-                               <li key={index}>{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</li>
-                             ))}
-                           </ul>
+                           <div>
+                             <div className={`mt-2 text-sm flex items-center ${filesToUpload.length > 6 ? 'text-red-500 font-semibold' : filesToUpload.length === 6 ? 'text-orange-500 font-semibold' : 'text-gray-500'}`}>
+                               File terpilih: {filesToUpload.length}/6
+                               {filesToUpload.length > 6 && (
+                                 <span className="ml-2 bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded">Melebihi batas</span>
+                               )}
+                               {filesToUpload.length === 6 && (
+                                 <span className="ml-2 bg-orange-100 text-orange-800 text-xs font-medium px-2.5 py-0.5 rounded">Maksimum</span>
+                               )}
+                             </div>
+                             <ul className="mt-2 space-y-2">
+                               {filesToUpload.map((file, index) => (
+                                 <li key={index} className="flex items-center gap-2 text-sm">
+                                   <button
+                                     type="button"
+                                     onClick={() => handleRemoveFile(index)}
+                                     className="text-red-500 hover:text-red-700 focus:outline-none"
+                                     title="Hapus file"
+                                   >
+                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                     </svg>
+                                   </button>
+                                   <span className="text-gray-800 dark:text-gray-200 truncate max-w-xs">
+                                     {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                                   </span>
+                                 </li>
+                               ))}
+                             </ul>
+                           </div>
                          )}
                     </div>
                 </div>
@@ -768,21 +908,38 @@ export function DataTableRapat() {
                         disabled={isSubmitting}
                         className={clsx(
                             baseButtonClass,
-                            'bg-background-primary border-border-default text-text-primary hover:bg-background-secondary disabled:opacity-50'
+                            'px-4 py-2 bg-gray-700 text-gray-200 rounded-md hover:bg-gray-600 disabled:opacity-50'
                         )}
                     >
                         Batal
                     </button>
                     <button
-                        onClick={handleSimpanDokumen}
+                        onClick={(e) => {
+                          if (filesToUpload.length > 6 || hasAttemptedOverUpload) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            Swal.fire({
+                              title: 'Gagal!',
+                              text: `Tombol nonaktif. ${hasAttemptedOverUpload ? 'Anda mencoba mengunggah lebih dari 6 file.' : 'Jumlah file ('+ filesToUpload.length +') melebihi batas (6).'} Silakan kurangi jumlah file.`,
+                              icon: 'error',
+                              confirmButtonColor: '#3085d6',
+                              confirmButtonText: 'Mengerti'
+                            });
+                             // Ensure the UI reflects the over-upload state
+                            if (filesToUpload.length > 6 && !hasAttemptedOverUpload) setHasAttemptedOverUpload(true);
+                            return false;
+                          }
+                          handleSimpanDokumen();
+                        }}
                         type="button"
-                        disabled={isSubmitting || (!notulensiInput.trim() && filesToUpload.length === 0)}
+                        disabled={isSubmitting || (!notulensiInput.trim() && filesToUpload.length === 0) || filesToUpload.length > 6 || hasAttemptedOverUpload}
+                        style={{ pointerEvents: (filesToUpload.length > 6 || hasAttemptedOverUpload) ? 'none' : 'auto' }}
                         className={clsx(
                             baseButtonClass,
-                            'bg-brand-600 border-brand-600 text-text-on-brand hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed'
+                            `px-4 py-2 ${(filesToUpload.length > 6 || hasAttemptedOverUpload) ? 'bg-red-500 opacity-70 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'} text-white rounded-md disabled:opacity-50` // Removed duplicate disabled:cursor-not-allowed as it's part of Tailwind's disabled: opacity-50
                         )}
                     >
-                        {isSubmitting ? 'Menyimpan...' : 'Simpan Dokumen'}
+                        {isSubmitting ? 'Menyimpan...' : (filesToUpload.length > 6 || hasAttemptedOverUpload) ? 'Batas File Terlampaui' : 'Simpan Dokumen'}
                     </button>
                 </div>
             </div>

@@ -12,6 +12,7 @@
     "seed": "node prisma/seed.js"
   },
   "dependencies": {
+    "lodash.isequal": "^4.5.0",
     "next": "15.3.1",
     "notulensi-rapat": "file:",
     "react": "^19.0.0",
