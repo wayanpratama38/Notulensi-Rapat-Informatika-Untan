@@ -70,8 +70,20 @@ export async function downloadDataRapat(id){
         throw new Error("Unauthorized");
     }
     if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || `Error downloading meeting report: ${res.status}`);
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+            const err = await res.json();
+            throw new Error(err.message || `Error downloading meeting report: ${res.status}`);
+        } else {
+            // If it's not JSON, it might be an HTML error page or plain text
+            const errorText = await res.text();
+            // Try to extract a meaningful message from HTML or use the text directly
+            const bodyMatch = errorText.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+            const titleMatch = errorText.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+            const match = bodyMatch || titleMatch;
+            const displayError = match && match[1] ? match[1].trim().replace(/<[^>]+>/g, ' ').replace(/\s\s+/g, ' ').substring(0, 200) : errorText.substring(0,200);
+            throw new Error(displayError.trim() || `Error downloading meeting report: ${res.status} - ${res.statusText}`);
+        }
     }
     return res.blob();
         

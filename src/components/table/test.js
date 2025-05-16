@@ -331,7 +331,6 @@ export function DataTableRapat() {
   const handleDownloadLaporan = useCallback(async (meetingId, namaRapat) => {
      if (!meetingId) return;
      
-     // Jika sudah dalam proses download, jangan mulai download baru
      if (isDownloading) {
        console.log("Download already in progress, skipping...");
        return;
@@ -344,14 +343,30 @@ export function DataTableRapat() {
           downloadPdf(blob,`Notulensi_${namaRapat}.pdf`);
       } catch (err) { 
         if(err.message === "Unauthorized") {
-          router.push('/sign-in');
+          // Show a message before redirecting
+          Swal.fire({
+            title: 'Sesi Berakhir',
+            text: 'Sesi Anda telah berakhir. Silakan masuk kembali.',
+            icon: 'warning',
+            confirmButtonColor: '#3085d6',
+            confirmButtonText: 'OK'
+          }).then(() => {
+            router.push('/sign-in');
+          });
           return;
         }
-        alert(`Error: ${err.message}`); 
+        // Display other errors using SweetAlert
+        Swal.fire({
+          title: 'Gagal Mengunduh',
+          text: err.message || 'Terjadi kesalahan saat mencoba mengunduh laporan.',
+          icon: 'error',
+          confirmButtonColor: '#d33',
+          confirmButtonText: 'OK'
+        });
       } finally {
         setIsDownloading(false);
       }
-  }, [router, isDownloading, memoizedDownloadRapat]);
+  }, [router, isDownloading, memoizedDownloadRapat, Swal]); // Added Swal to dependency array
 
  
   const columns = useMemo(() => [
