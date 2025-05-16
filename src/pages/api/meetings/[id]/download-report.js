@@ -61,7 +61,7 @@ const imagePathToDataUrl = (filePathRelToPublic) => {
 async function handler(req, res) {
   const { id: meetingId } = req.query;
 
-  console.log('Absolute Font Path (Normal):', fonts.Roboto.normal);
+  // console.log('Absolute Font Path (Normal):', fonts.Roboto.normal); // Keep for debugging if needed
 
   if (req.method !== 'GET') {
     res.setHeader('Allow', ['GET']);
@@ -71,9 +71,26 @@ async function handler(req, res) {
   try {
     // Skip expensive operations during build time
     if (process.env.NODE_ENV === 'production' && process.env.NEXT_PHASE === 'phase-production-build') {
-      // Return a dummy response during build time
       return res.status(200).json({ message: 'PDF generation skipped during build' });
     }
+
+    // --- BEGIN FONT CHECKS ---
+    if (!process.env.FONTS_DIR) {
+      console.error("FONTS_DIR environment variable is not set.");
+      throw new Error("Server configuration error: Font directory not specified. PDF generation failed.");
+    }
+
+    const fontPaths = fonts.Roboto; // Assuming 'fonts' object is defined above as in the original code
+    for (const style in fontPaths) {
+      const resolvedPath = fontPaths[style];
+      if (!fs.existsSync(resolvedPath)) {
+        const errorMessage = `Missing font file: ${resolvedPath}. PDF generation failed. Please check server font configuration (FONTS_DIR).`;
+        console.error(errorMessage);
+        throw new Error(errorMessage);
+      }
+      // console.log(`Font check: ${resolvedPath} exists.`); // Optional: for successful check logging
+    }
+    // --- END FONT CHECKS ---
     
     const meeting = await prisma.meeting.findUnique({
       where: { id: meetingId },
