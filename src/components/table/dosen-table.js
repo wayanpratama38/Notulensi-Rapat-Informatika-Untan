@@ -186,7 +186,7 @@ export function DataTableDosen() {
         icon: 'warning',
         title: 'Data Belum Lengkap',
         text: 'Nama, email, dan password wajib diisi.',
-        confirmButtonColor: '#3085d6',
+        
       });
       return;
     }
@@ -202,14 +202,13 @@ export function DataTableDosen() {
         icon: 'success',
         title: 'Berhasil',
         text: `Dosen "${formData.nama}" berhasil ditambahkan!`,
-        confirmButtonColor: '#3085d6',
       });
     } catch (err) {
       Swal.fire({
         icon: 'error',
         title: 'Terjadi Kesalahan',
         text: err.message,
-        confirmButtonColor: '#3085d6',
+        
       });
       setError(err.message);
     } finally {
@@ -238,7 +237,7 @@ export function DataTableDosen() {
         icon: 'warning',
         title: 'Data Belum Lengkap',
         text: 'Nama dan email wajib diisi.',
-        confirmButtonColor: '#3085d6',
+        
       });
       return;
     }
@@ -265,14 +264,14 @@ export function DataTableDosen() {
         icon: 'success',
         title: 'Berhasil',
         text: `Data dosen "${formData.nama}" berhasil diperbarui!`,
-        confirmButtonColor: '#3085d6',
+        
       });
     } catch (err) {
       Swal.fire({
         icon: 'error',
         title: 'Terjadi Kesalahan',
         text: err.message,
-        confirmButtonColor: '#3085d6',
+        
       });
       setError(err.message);
     } finally {
@@ -289,8 +288,6 @@ export function DataTableDosen() {
       text: `Apakah Anda yakin ingin menghapus dosen "${nama}"?`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
       confirmButtonText: 'Ya, hapus!',
       cancelButtonText: 'Batal'
     }).then(async (result) => {
@@ -303,7 +300,6 @@ export function DataTableDosen() {
             icon: 'success',
             title: 'Berhasil Dihapus',
             text: `Dosen "${nama}" berhasil dihapus.`,
-            confirmButtonColor: '#3085d6',
           });
           fetchData();
           closeActionMenu();
@@ -316,7 +312,6 @@ export function DataTableDosen() {
             icon: 'error',
             title: 'Terjadi Kesalahan',
             text: `Error: ${err.message}`,
-            confirmButtonColor: '#3085d6',
           });
         } finally {
           setIsLoading(false);

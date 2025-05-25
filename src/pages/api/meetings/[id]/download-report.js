@@ -4,18 +4,6 @@ import PdfPrinter from 'pdfmake';
 import fs from 'fs';
 import path from 'path';
 
-// Use environment variables or default paths for fonts
-const FONTS_DIR = process.env.FONTS_DIR
-// Make sure paths work in both development and production
-const fonts = {
-  Roboto: {
-    normal: path.resolve(FONTS_DIR, 'Roboto-Regular.ttf'),
-    bold: path.resolve(FONTS_DIR, 'Roboto-Medium.ttf'), 
-    italics: path.resolve(FONTS_DIR, 'Roboto-Italic.ttf'),
-    bolditalics: path.resolve(FONTS_DIR, 'Roboto-MediumItalic.ttf'), 
-  }
-};
-
 // Improved helper function to prevent junction points scanning
 const imagePathToDataUrl = (filePathRelToPublic) => {
   if (!filePathRelToPublic) return null;
@@ -61,8 +49,6 @@ const imagePathToDataUrl = (filePathRelToPublic) => {
 async function handler(req, res) {
   const { id: meetingId } = req.query;
 
-  // console.log('Absolute Font Path (Normal):', fonts.Roboto.normal); // Keep for debugging if needed
-
   if (req.method !== 'GET') {
     res.setHeader('Allow', ['GET']);
     return res.status(405).end(`Method ${req.method} Not Allowed`);
@@ -74,23 +60,31 @@ async function handler(req, res) {
       return res.status(200).json({ message: 'PDF generation skipped during build' });
     }
 
-    // --- BEGIN FONT CHECKS ---
-    if (!process.env.FONTS_DIR) {
-      console.error("FONTS_DIR environment variable is not set.");
-      throw new Error("Server configuration error: Font directory not specified. PDF generation failed.");
-    }
+    const projectRoot = process.cwd();
+    const FONTS_DIR_PATH = path.join(projectRoot, 'public', 'fonts');
 
-    const fontPaths = fonts.Roboto; // Assuming 'fonts' object is defined above as in the original code
+    // Define fonts object using the constructed path
+    const fonts = {
+      Roboto: {
+        normal: path.resolve(FONTS_DIR_PATH, 'Roboto-Regular.ttf'),
+        bold: path.resolve(FONTS_DIR_PATH, 'Roboto-Medium.ttf'), 
+        italics: path.resolve(FONTS_DIR_PATH, 'Roboto-Italic.ttf'),
+        bolditalics: path.resolve(FONTS_DIR_PATH, 'Roboto-MediumItalic.ttf'), 
+      }
+    };
+
+    // --- BEGIN FONT FILE EXISTENCE CHECKS ---
+    const fontPaths = fonts.Roboto;
     for (const style in fontPaths) {
       const resolvedPath = fontPaths[style];
       if (!fs.existsSync(resolvedPath)) {
-        const errorMessage = `Missing font file: ${resolvedPath}. PDF generation failed. Please check server font configuration (FONTS_DIR).`;
+        const errorMessage = `Missing font file: ${resolvedPath}. PDF generation failed. Expected fonts in 'public/fonts' directory relative to project root.`;
         console.error(errorMessage);
         throw new Error(errorMessage);
       }
-      // console.log(`Font check: ${resolvedPath} exists.`); // Optional: for successful check logging
+      // console.log(`Font check: ${resolvedPath} exists.`); // Optional for debugging
     }
-    // --- END FONT CHECKS ---
+    // --- END FONT FILE EXISTENCE CHECKS ---
     
     const meeting = await prisma.meeting.findUnique({
       where: { id: meetingId },
@@ -133,7 +127,7 @@ async function handler(req, res) {
         
         if (mp.user?.tandaTangan) {
           const signaturePathFromDB = mp.user.tandaTangan;
-          console.log(`Processing signature for ${mp.user.nama}. Path from DB: "${signaturePathFromDB}"`)
+          console.log(`Processing signature for ${mp.user.nama}. Path from DB: "${signaturePathFromDB}"`);
           
           // Convert tandaTangan file path ke data URL untuk PDF
           const signatureDataUrl = imagePathToDataUrl(signaturePathFromDB);
@@ -161,7 +155,7 @@ async function handler(req, res) {
       const docItems = [];
       
       // Proses setiap dokumen
-      meeting.documents.forEach(doc => {
+      meeting.documents.forEach((doc,index) => {
         const docItem = {};
         
         if (doc.tipeFile?.startsWith('image/')) {
@@ -169,7 +163,7 @@ async function handler(req, res) {
           if (docDataUrl) {
              docItem.image = docDataUrl;
              docItem.width = 150; // Ukuran lebih kecil untuk grid
-             docItem.caption = doc.namaFile || 'Dokumen Gambar';
+             docItem.caption = `Dokumentasi ke-${index + 1}`;
           } else {
              docItem.text = `[Gagal memuat gambar: ${doc.namaFile || 'Unknown'}]`;
              docItem.color = 'red';
@@ -303,7 +297,7 @@ async function handler(req, res) {
           }
         },
 
-        (documentationContent.length > 1 || (documentationContent.length === 1 && !documentationContent[0].text?.includes('Tidak ada dokumentasi')))
+        (documentationContent.length > 1 || (documentationContent.length === 1 && !documentationContent[0].text?.includes('Tidak ada dokumentasi'))) 
           ? { text: 'Dokumentasi:', style: 'sectionHeader', pageBreak: 'before', marginBottom: 10 }
           : null, 
         ...documentationContent

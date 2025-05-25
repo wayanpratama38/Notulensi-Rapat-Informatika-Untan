@@ -1,189 +1,132 @@
 // src/components/calendar/CustomTimePicker.js
 "use client";
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import clsx from 'clsx';
 
-// Helper to generate options
-const generateOptions = (max, pad = 2, step = 1) => {
-  const options = [];
-  for (let i = 0; i < max; i += step) {
-    options.push(i.toString().padStart(pad, '0'));
-  }
-  return options;
-};
+const CustomTimePicker = ({ value, onChange, idPrefix = "time", error = false }) => {
+  // Hanya state untuk nilai input
+  const [inputValue, setInputValue] = useState('00:00');
+  const inputRef = useRef(null);
 
-const CustomTimePicker = ({ value, onChange, idPrefix = "time" }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [currentHour, setCurrentHour] = useState('09');
-  const [currentMinute, setCurrentMinute] = useState('00');
-  const [popoverPosition, setPopoverPosition] = useState({ bottom: '100%' }); // Default to open upwards
+  // Fungsi untuk memvalidasi dan memformat waktu HH:MM
+  const formatAndValidateTime = (val) => {
+    // 1. Ambil hanya digit, batasi hingga 4
+    let digits = val.replace(/\D/g, '');
+    if (digits.length > 4) {
+      digits = digits.slice(0, 4);
+    }
 
-  const pickerRef = useRef(null);
-  const triggerRef = useRef(null); 
-  const popoverRef = useRef(null); 
-  const hourScrollRef = useRef(null);
-  const minuteScrollRef = useRef(null);
-
-  const hourOptions = useMemo(() => generateOptions(24), []);
-  const minuteOptions = useMemo(() => generateOptions(60), []);
-
-  useEffect(() => {
-    if (value && value.includes(':')) {
-      const [h, m] = value.split(':');
-      setCurrentHour(h.padStart(2, '0'));
-      setCurrentMinute(m.padStart(2, '0'));
+    // 2. Format menjadi HH:MM jika memungkinkan
+    let formattedValue = '';
+    if (digits.length > 2) {
+      formattedValue = `${digits.slice(0, 2)}:${digits.slice(2)}`;
     } else {
-      setCurrentHour('00');
-      setCurrentMinute('00');
+      formattedValue = digits;
+    }
+
+    // 3. Validasi saat format penuh (HH:MM)
+    let finalTime = formattedValue;
+    if (formattedValue.length === 5) {
+        let [h, m] = formattedValue.split(':');
+        let hourNum = parseInt(h, 10);
+        let minuteNum = parseInt(m, 10);
+
+        // Validasi jam (0-23)
+        if (hourNum > 23) hourNum = 23;
+        // Validasi menit (0-59)
+        if (minuteNum > 59) minuteNum = 59;
+
+        finalTime = `${hourNum.toString().padStart(2, '0')}:${minuteNum.toString().padStart(2, '0')}`;
+    }
+    
+    return finalTime;
+  };
+
+  // Fungsi untuk memvalidasi penuh saat blur atau enter
+  const finalizeTime = (val) => {
+      let [h, m] = val.split(':');
+
+      // Jika format tidak lengkap, coba lengkapi atau default
+      if (!m) {
+          const digits = val.replace(/\D/g, '');
+          h = digits.slice(0, 2) || '00';
+          m = digits.slice(2, 4) || '00';
+      }
+
+      let hourNum = parseInt(h, 10);
+      let minuteNum = parseInt(m, 10);
+
+      if (isNaN(hourNum) || hourNum < 0 || hourNum > 23) hourNum = 0;
+      if (isNaN(minuteNum) || minuteNum < 0 || minuteNum > 59) minuteNum = 0;
+
+      const finalTime = `${hourNum.toString().padStart(2, '0')}:${minuteNum.toString().padStart(2, '0')}`;
+      
+      setInputValue(finalTime);
+      onChange(finalTime); // Kirim waktu yang sudah valid ke parent
+  }
+
+  // Sync state internal dengan prop 'value'
+  useEffect(() => {
+    if (value && /^\d{2}:\d{2}$/.test(value)) {
+      setInputValue(value);
+    } else {
+      // Jika value tidak valid, set ke 00:00 atau nilai default lain
+      setInputValue('00:00');
     }
   }, [value]);
 
-  // Scroll to selected values
-  useEffect(() => {
-    if (isOpen) {
-      const scrollToSelected = (scrollRef, selectedValue, options) => {
-        if (scrollRef.current) {
-          const selectedIndex = options.indexOf(selectedValue);
-          if (selectedIndex !== -1) {
-            const selectedElement = scrollRef.current.children[selectedIndex];
-            if (selectedElement) {
-              selectedElement.scrollIntoView({
-                block: 'center',
-                inline: 'nearest',
-                behavior: 'smooth'
-              });
-            }
-          }
-        }
-      };
-      
-      const timer = setTimeout(() => {
-        scrollToSelected(hourScrollRef, currentHour, hourOptions);
-        scrollToSelected(minuteScrollRef, currentMinute, minuteOptions);
-      }, 50);
-      
-      return () => clearTimeout(timer);
+  // Handle Input Change untuk auto-formatting
+  const handleInputChange = (e) => {
+    const formatted = formatAndValidateTime(e.target.value);
+    setInputValue(formatted);
+
+    // Jika sudah format HH:MM, langsung panggil onChange
+    if (formatted.length === 5) {
+        onChange(formatted);
     }
-  }, [isOpen, currentHour, currentMinute, hourOptions, minuteOptions]);
-
-  // Position the popover
-  useEffect(() => {
-    if (isOpen && triggerRef.current) {
-      // Always position above the trigger button
-      const buttonHeight = triggerRef.current.offsetHeight;
-      setPopoverPosition({ 
-        bottom: `${buttonHeight + 4}px`,
-        left: '50%',
-        transform: 'translateX(-50%)'
-      });
-    }
-  }, [isOpen]);
-
-  // Close on click outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (pickerRef.current && !pickerRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
-  const handleHourChange = (hour) => {
-    setCurrentHour(hour);
-    onChange(`${hour}:${currentMinute}`);
   };
 
-  const handleMinuteChange = (minute) => {
-    setCurrentMinute(minute);
-    onChange(`${currentHour}:${minute}`);
-    setIsOpen(false);
+  // Handle Input Blur untuk validasi akhir
+  const handleInputBlur = (e) => {
+    finalizeTime(e.target.value);
   };
 
-  const displayTime = `${currentHour}:${currentMinute}`;
+  // Handle Key Down (Enter untuk validasi)
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      finalizeTime(inputValue);
+      inputRef.current?.blur(); // Pindahkan fokus
+      e.preventDefault(); // Cegah submit form jika ada
+    }
+  };
 
   return (
-    <div className="relative" ref={pickerRef}> 
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="modal-input h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 px-4 py-2.5 text-sm text-left text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none flex items-center justify-between"
-        aria-haspopup="true"
-        aria-expanded={isOpen}
-        aria-controls={`${idPrefix}-picker-popover`}
-      >
-        <span>{displayTime} <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">WIB</span></span>
-        <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-      </button>
-
-      {isOpen && (
-        <div
-          ref={popoverRef}
-          id={`${idPrefix}-picker-popover`}
-          role="dialog"
-          aria-modal="true"
-          className="absolute z-50 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 p-2"
-          style={popoverPosition}
-        >
-          <div className="flex items-center justify-center w-44">
-            {/* Hour Column */}
-            <div className="w-1/2 pr-1">
-              <div className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                Jam
-              </div>
-              <div 
-                ref={hourScrollRef} 
-                className="h-32 overflow-y-auto time-picker-scroll border border-gray-200 dark:border-gray-700 rounded"
-              >
-                {hourOptions.map((hour) => (
-                  <div
-                    key={`hour-${hour}`}
-                    onClick={() => handleHourChange(hour)}
-                    className={clsx(
-                      "p-2 text-center cursor-pointer",
-                      hour === currentHour 
-                        ? "bg-blue-500 text-white" 
-                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    )}
-                  >
-                    {hour}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Minute Column */}
-            <div className="w-1/2 pl-1">
-              <div className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                Menit
-              </div>
-              <div 
-                ref={minuteScrollRef} 
-                className="h-32 overflow-y-auto time-picker-scroll border border-gray-200 dark:border-gray-700 rounded"
-              >
-                {minuteOptions.map((minute) => (
-                  <div
-                    key={`minute-${minute}`}
-                    onClick={() => handleMinuteChange(minute)}
-                    className={clsx(
-                      "p-2 text-center cursor-pointer",
-                      minute === currentMinute 
-                        ? "bg-blue-500 text-white" 
-                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    )}
-                  >
-                    {minute}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+    // Hanya wrapper dan input
+    <div className="relative">
+      <div className="relative">
+        <input
+          ref={inputRef}
+          type="text" // Gunakan text untuk kontrol penuh
+          id={`${idPrefix}-input`}
+          value={inputValue}
+          onChange={handleInputChange}
+          onBlur={handleInputBlur}
+          onKeyDown={handleKeyDown}
+          placeholder="HH:MM"
+          maxLength={5} // Batasi panjang input menjadi HH:MM
+          className={clsx(
+            "modal-input h-11 w-full rounded-lg border bg-gray-50 dark:bg-gray-700 pl-4 pr-10 py-2.5 text-sm text-gray-900 dark:text-white focus:ring-1 outline-none",
+            error
+              ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+              : 'border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500'
+          )}
+        />
+        {/* Ikon jam bisa tetap ada untuk visual */}
+        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+          <span className="text-xs text-gray-500 dark:text-gray-400 mr-1">WIB</span>
+          <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
         </div>
-      )}
+      </div>
     </div>
   );
 };

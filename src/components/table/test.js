@@ -50,6 +50,7 @@ export function DataTableRapat() {
   const [activeRapatForMenu, setActiveRapatForMenu] = useState(null);
   const [rapatUntukModal, setRapatUntukModal] = useState(null);
   const [notulensiInput, setNotulensiInput] = useState("");
+  const [notulensiError, setNotulensiError] = useState(null);
   const [filesToUpload, setFilesToUpload] = useState([]);
   const [hasAttemptedOverUpload, setHasAttemptedOverUpload] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -70,6 +71,25 @@ export function DataTableRapat() {
   const bulkActionMenuDropdownRef = useRef(null);
 
 
+  const countWords = (text) => {
+    if(!text ||text.trim()) {
+      return 0;
+    }
+    return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+  }
+
+  const validateNotulensi = (text) => {
+    const trimmedText = text.trim();
+    const charCount = trimmedText.length;
+
+    if (!trimmedText) {
+        return "Notulensi wajib diisi.";
+    }
+    if (charCount < 30) {
+        return `Notulensi minimal 30 karakter (saat ini ${charCount} karakter).`;
+    }
+    return null;
+  }
  
 
 
@@ -158,6 +178,12 @@ export function DataTableRapat() {
     openModal(); // from useModal hook
   }, [openModal]);
 
+  const handleNotulensiChange = (event) => {
+    const newNotulensi = event.target.value;
+    setNotulensiInput(newNotulensi);
+    setNotulensiError(validateNotulensi(newNotulensi));
+  }
+
   const handleFileChange = (event) => {
     if (event.target.files) {
       const newFiles = Array.from(event.target.files);
@@ -182,9 +208,9 @@ export function DataTableRapat() {
                 confirmButtonText: 'OK'
             });
         } else {
-           // If no slots, don't add, but hasAttemptedOverUpload is already true
+          
         }
-        event.target.value = null; // Clear file input
+        event.target.value = null; 
         return;
       }
       
@@ -239,6 +265,18 @@ export function DataTableRapat() {
 
   const handleSimpanDokumen = useCallback(async () => {
     if (!rapatUntukModal) return;
+
+    const currentNotulensiError = validateNotulensi(notulensiInput);
+    if(currentNotulensiError) {
+      Swal.fire({
+        title: 'Gagal Menyimpan!',
+        text: currentNotulensiError,
+        icon: 'error',
+        confirmButtonColor: '#3085d6',
+        confirmButtonText: 'Mengerti'
+      });
+      return;
+      }
 
     if (filesToUpload.length > 6 || hasAttemptedOverUpload) {
       Swal.fire({
@@ -298,28 +336,69 @@ export function DataTableRapat() {
       });
       
       setError(err.message); 
-    } // Set error for modal
+    } 
     finally { setIsSubmitting(false); }
   }, [closeModal, rapatUntukModal, notulensiInput, filesToUpload, fetchData, router]);
 
   const handleDeleteRapat = useCallback(async (meetingId, namaRapat) => {
       if (!meetingId) return;
-      if (window.confirm(`Apakah Anda yakin ingin menghapus rapat "${namaRapat}"?`)) {
-          setIsLoading(true); 
-          setError(null); 
+      
+      const result = await Swal.fire({
+          title: 'Apakah Anda yakin?',
+          text: `Anda akan menghapus rapat "${namaRapat}". Tindakan ini tidak dapat dibatalkan!`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Ya, hapus!',
+          cancelButtonText: 'Batal'
+      });
+
+    
+      if (result.isConfirmed) {
+          setIsLoading(true);
+          setError(null);
           try {
               await deleteDataRapat(meetingId);
-              alert(`Rapat "${namaRapat}" berhasil dihapus.`);
+
+              
+              await Swal.fire(
+                  'Berhasil!',
+                  `Rapat "${namaRapat}" berhasil dihapus.`,
+                  'success'
+              );
+              closeActionMenu();
               fetchData();
-          } catch (err) { 
-            if(err.message === "Unauthorized") {
-              router.push('/sign-in');
-              return;
-            }
-            setError(err.message); }
-          finally { setIsLoading(false); }
+
+          } catch (err) {
+              console.error("Error deleting meeting:", err);
+
+              if (err.message === "Unauthorized") {
+                 
+                  Swal.fire({
+                      title: 'Sesi Habis',
+                      text: 'Sesi Anda telah berakhir. Anda akan diarahkan ke halaman login.',
+                      icon: 'warning',
+                      timer: 2500, 
+                      showConfirmButton: false,
+                      timerProgressBar: true,
+                  }).then(() => {
+                      router.push('/sign-in');
+                  });
+                  return; 
+              }
+
+              
+              setError(err.message); 
+              Swal.fire(
+                  'Gagal!',
+                  `Terjadi kesalahan saat menghapus rapat: ${err.message}`,
+                  'error'
+              );
+
+          } finally {
+              setIsLoading(false); 
+          }
       }
-  }, [fetchData, router]);
+  }, [fetchData, router, setIsLoading, setError]);
 
   // Memoize downloadDataRapat untuk menghindari panggilan ganda
   const memoizedDownloadRapat = useCallback(async (meetingId) => {
@@ -521,46 +600,129 @@ export function DataTableRapat() {
     const meetingsToDelete = selectedRowsData;
     if (meetingsToDelete.length === 0) return;
 
-    if (window.confirm(`Apakah Anda yakin ingin menghapus ${meetingsToDelete.length} rapat yang dipilih?`)) {
+    const result = await Swal.fire({
+      title : "Apakah Anda yakin ingin menghapus rapat yang dipilih?",
+      text : `Anda akan menghapus ${meetingsToDelete.length} rapat yang dipilih.`,
+      icon : "warning",
+      showCancelButton : true,
+      confirmButtonText : "Ya, Hapus",
+      cancelButtonText : "Batal",
+    })  
+
+    if (result.isConfirmed) {
       setIsLoading(true);
       setError(null);
       let successCount = 0;
       let failCount = 0;
+      const failedMeetings = [];
 
+      Swal.fire({
+        title: 'Menghapus...',
+        text: `Sedang memproses penghapusan ${meetingsToDelete.length} rapat.`,
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+      });
       for (const meeting of meetingsToDelete) {
         try {
-          const response = await fetch(`/api/meetings/${meeting.id}`, { method: 'DELETE' });
-          if (response.status === 401) { router.push('/sign-in'); throw new Error("Sesi tidak valid."); }
-          if (!response.ok) {
-            const errorData = await response.json();
-            console.error(`Gagal menghapus rapat "${meeting.namaRapat}": ${errorData.message || response.status}`);
-            failCount++;
-            continue;
-          }
-          successCount++;
+            const response = await fetch(`/api/meetings/${meeting.id}`, { method: 'DELETE' });
+            if (response.status === 401) {
+                router.push('/sign-in');
+                throw new Error("Sesi tidak valid.");
+            }
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error(`Gagal menghapus rapat "${meeting.namaRapat}": ${errorData.message || response.status}`);
+                failCount++;
+                failedMeetings.push(meeting.namaRapat);
+                continue;
+            }
+            successCount++;
         } catch (err) {
-          console.error(`Error saat menghapus rapat "${meeting.namaRapat}":`, err);
-          failCount++;
+            console.error(`Error saat menghapus rapat "${meeting.namaRapat}":`, err);
+            failCount++;
+            failedMeetings.push(meeting.namaRapat);
         }
       }
+      let title = "";
+      let text = "";
+      let icon = "info";
 
-      let message = "";
-      if (successCount > 0) message += `${successCount} rapat berhasil dihapus. `;
-      if (failCount > 0) message += `${failCount} rapat gagal dihapus. Lihat konsol untuk detail.`;
-      if (!message) message = "Tidak ada rapat yang diproses.";
-      
-      alert(message);
+      if (successCount > 0 && failCount === 0) {
+          title = "Berhasil!";
+          text = `${successCount} rapat berhasil dihapus.`;
+          icon = "success";
+      } else if (successCount === 0 && failCount > 0) {
+          title = "Gagal Total!";
+          text = `Semua ${failCount} rapat gagal dihapus. Lihat konsol untuk detail.`;
+          icon = "error";
+      } else if (successCount > 0 && failCount > 0) {
+          title = "Selesai dengan Catatan";
+          text = `${successCount} rapat berhasil dihapus. ${failCount} rapat gagal dihapus (Lihat konsol).`;
+          icon = "warning";
+      } else {
+          title = "Tidak Ada Perubahan";
+          text = "Tidak ada rapat yang diproses.";
+          icon = "info";
+      }
+
+      Swal.fire({
+          title: title,
+          text: text,
+          icon: icon,
+          confirmButtonText: 'OK'
+      });
+
       fetchData();
       table.resetRowSelection(); // Clear selection
       closeBulkActionMenu();
       setIsLoading(false);
+    // if (window.confirm(`Apakah Anda yakin ingin menghapus ${meetingsToDelete.length} rapat yang dipilih?`)) {
+    //   setIsLoading(true);
+    //   setError(null);
+    //   let successCount = 0;
+    //   let failCount = 0;
+
+    //   for (const meeting of meetingsToDelete) {
+    //     try {
+    //       const response = await fetch(`/api/meetings/${meeting.id}`, { method: 'DELETE' });
+    //       if (response.status === 401) { router.push('/sign-in'); throw new Error("Sesi tidak valid."); }
+    //       if (!response.ok) {
+    //         const errorData = await response.json();
+    //         console.error(`Gagal menghapus rapat "${meeting.namaRapat}": ${errorData.message || response.status}`);
+    //         failCount++;
+    //         continue;
+    //       }
+    //       successCount++;
+    //     } catch (err) {
+    //       console.error(`Error saat menghapus rapat "${meeting.namaRapat}":`, err);
+    //       failCount++;
+    //     }
+    //   }
+
+    //   let message = "";
+    //   if (successCount > 0) message += `${successCount} rapat berhasil dihapus. `;
+    //   if (failCount > 0) message += `${failCount} rapat gagal dihapus. Lihat konsol untuk detail.`;
+    //   if (!message) message = "Tidak ada rapat yang diproses.";
+      
+    //   alert(message);
+    //   fetchData();
+    //   table.resetRowSelection(); // Clear selection
+    //   closeBulkActionMenu();
+    //   setIsLoading(false);
     }
   }, [selectedRowsData, fetchData, router, table, closeBulkActionMenu]);
 
   const handleBulkDownloadSelected = useCallback(async () => {
     const meetingsToDownload = selectedRowsData.filter(row => row.status === "ARSIP");
     if (meetingsToDownload.length === 0) {
-        alert("Tidak ada rapat berstatus ARSIP yang dipilih untuk diunduh.");
+        Swal.fire({
+          title: 'Tidak Ada Rapat Terpilih',
+          text: "Tidak ada rapat berstatus ARSIP yang dipilih untuk diunduh.",
+          icon: 'warning',
+          confirmButtonText: 'OK'
+        });
         return;
     }
 
@@ -572,36 +734,100 @@ export function DataTableRapat() {
       table.resetRowSelection();
       return;
     }
+    const result = await Swal.fire({
+      title: 'Konfirmasi Unduh Massal',
+      text: `Laporan untuk ${meetingsToDownload.length} rapat terpilih (status ARSIP) akan diunduh satu per satu. Lanjutkan?`,
+      icon: 'info',
+      showCancelButton: true,
+      confirmButtonText: 'Lanjutkan',
+      cancelButtonText: 'Batal'
+  });
 
-    if (window.confirm(`Laporan untuk ${meetingsToDownload.length} rapat terpilih (status ARSIP) akan diunduh satu per satu. Lanjutkan?`)) {
-      // Aktifkan loading untuk batch download
+  if (result.isConfirmed) {
       setIsDownloading(true);
-      
-      try {
-        // No global loading for multiple downloads to keep UI responsive
-        let downloadInitiated = 0;
-        for (const meeting of meetingsToDownload) {
-          // Gunakan try/catch untuk setiap download, tapi jangan tampilkan loading per item
+
+      // Gunakan toast untuk notifikasi awal
+      const Toast = Swal.mixin({
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 3000,
+          timerProgressBar: true,
+      });
+
+      Toast.fire({
+          icon: 'info',
+          title: 'Memulai proses unduh...'
+      });
+
+      let downloadInitiated = 0;
+      let downloadFailed = 0;
+
+      for (const meeting of meetingsToDownload) {
           try {
-            const blob = await memoizedDownloadRapat(meeting.id);
-            downloadPdf(blob, `Notulensi_${meeting.namaRapat}.pdf`);
-            downloadInitiated++;
+              const blob = await memoizedDownloadRapat(meeting.id);
+              downloadPdf(blob, `Notulensi_${meeting.namaRapat}.pdf`);
+              downloadInitiated++;
+              // Jeda singkat antar unduhan agar tidak membanjiri browser (opsional)
+              await new Promise(resolve => setTimeout(resolve, 300));
           } catch (err) {
-            console.error(`Error downloading report for meeting ${meeting.namaRapat}:`, err);
+              console.error(`Error downloading report for meeting ${meeting.namaRapat}:`, err);
+              downloadFailed++;
           }
-        }
-        
-        if(downloadInitiated > 0) {
-          // alert(`${downloadInitiated} proses unduh laporan telah dimulai.`);
-        }
-      } catch (err) {
-        console.error("Error in bulk download:", err);
-      } finally {
-        setIsDownloading(false);
-        table.resetRowSelection();
-        closeBulkActionMenu();
       }
-    }
+
+      setIsDownloading(false);
+      table.resetRowSelection();
+      closeBulkActionMenu();
+
+      // Notifikasi akhir (opsional)
+      if(downloadFailed > 0) {
+           Swal.fire({
+              title: 'Unduh Selesai dengan Catatan',
+              text: `${downloadInitiated} laporan dimulai. ${downloadFailed} laporan gagal diunduh (lihat konsol).`,
+              icon: 'warning',
+              confirmButtonText: 'OK'
+          });
+      } else if (downloadInitiated > 0) {
+          // Bisa juga menggunakan toast lagi
+           Toast.fire({
+              icon: 'success',
+              title: `${downloadInitiated} proses unduh telah selesai.`
+          });
+      }
+  }
+
+
+
+    // if (window.confirm(`Laporan untuk ${meetingsToDownload.length} rapat terpilih (status ARSIP) akan diunduh satu per satu. Lanjutkan?`)) {
+    //   // Aktifkan loading untuk batch download
+    //   setIsDownloading(true);
+      
+    //   try {
+    //     // No global loading for multiple downloads to keep UI responsive
+    //     let downloadInitiated = 0;
+    //     for (const meeting of meetingsToDownload) {
+    //       // Gunakan try/catch untuk setiap download, tapi jangan tampilkan loading per item
+    //       try {
+    //         const blob = await memoizedDownloadRapat(meeting.id);
+    //         downloadPdf(blob, `Notulensi_${meeting.namaRapat}.pdf`);
+    //         downloadInitiated++;
+    //       } catch (err) {
+    //         console.error(`Error downloading report for meeting ${meeting.namaRapat}:`, err);
+    //       }
+    //     }
+        
+    //     if(downloadInitiated > 0) {
+    //       // alert(`${downloadInitiated} proses unduh laporan telah dimulai.`);
+    //     }
+    //   } catch (err) {
+    //     console.error("Error in bulk download:", err);
+    //   } finally {
+    //     setIsDownloading(false);
+    //     table.resetRowSelection();
+    //     closeBulkActionMenu();
+    //   }
+    // }
   }, [selectedRowsData, memoizedDownloadRapat, table, closeBulkActionMenu, handleDownloadLaporan]);
   // --- END BULK ACTION LOGIC ---
 
@@ -660,7 +886,7 @@ export function DataTableRapat() {
                     <div
                         id="bulk-action-menu-dropdown"
                         ref={bulkActionMenuDropdownRef}
-                        className="absolute left-0 md:left-auto md:right-0 top-full mt-1 bg-background-secondary border border-border-default rounded-md shadow-lg z-[1000] min-w-[200px] py-1 max-h-[300px] overflow-y-auto"
+                        className="absolute left-0 md:left-auto md:right-0 top-full mt-1 bg-white dark:bg-gray-800 border border-border-default rounded-md shadow-lg z-[1000] min-w-[200px] py-1 max-h-[300px] overflow-y-auto"
                     >
                         {availableBulkActions.map((action) => (
                             <button
@@ -673,7 +899,7 @@ export function DataTableRapat() {
                                     action.handler(e);
                                 }}
                                 className={clsx(
-                                    "block w-full text-left px-3 py-2 cursor-pointer text-text-primary bg-white hover:bg-background-tertiary text-sm",
+                                    "block w-full text-left px-3 py-2 cursor-pointer text-text-primary bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-black dark:text-white  text-sm",
                                     action.isDanger && "text-error-500 hover:bg-error-subtle hover:text-error-600"
                                 )}
                             >
@@ -829,137 +1055,179 @@ export function DataTableRapat() {
           </div>
       )}
 
-       {rapatUntukModal && (
-        <Modal
-            isOpen={isOpen}
-            onClose={closeModal} // Use the new closeModal
-            className="max-w-[700px] p-6 lg:p-10 bg-white dark:bg-gray-800 rounded-lg shadow-xl"
-        >
-            <div className="flex flex-col px-2 overflow-y-auto max-h-[80vh] custom-scroll">
-                <div>
-                    <h5 className="mb-2 text-gray-900 dark:text-white text-lg font-semibold modal-title">
-                        Lengkapi Dokumen Rapat
-                    </h5>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Untuk: <strong className="text-black dark:text-white">{rapatUntukModal.namaRapat}</strong>
-                    </p>
-                    {/* Modal-specific error */}
-                    {error && rapatUntukModal && <p className="text-sm text-red-500  mt-2">{error}</p>}
-                </div>
+      {rapatUntukModal && (
+          <Modal
+              isOpen={isOpen}
+              onClose={closeModal}
+              className="max-w-[700px] p-6 lg:p-10 bg-white dark:bg-gray-800 rounded-lg shadow-xl"
+          >
+              <div className="flex flex-col px-2 overflow-y-auto max-h-[80vh] custom-scroll">
+                  <div>
+                      <h5 className="mb-2 text-gray-900 dark:text-white text-lg font-semibold modal-title">
+                          Lengkapi Dokumen Rapat
+                      </h5>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Untuk: <strong className="text-black dark:text-white">{rapatUntukModal.namaRapat}</strong>
+                      </p>
+                      {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
+                  </div>
 
-                <div className="px-6 py-5 flex-grow overflow-y-auto space-y-6">
-                    <div>
-                        <label htmlFor="doc-notulensi" className="block text-sm font-medium text-text-secondary mb-1.5">
-                            Notulensi Rapat
-                        </label>
-                        <textarea
-                            id="doc-notulensi"
-                            rows={5}
-                            value={notulensiInput}
-                            onChange={(e) => setNotulensiInput(e.target.value)}
-                            placeholder="Masukkan hasil notulensi rapat di sini..."
-                            className={`${baseInputClass} w-full resize-y`}
-                            disabled={isSubmitting}
-                        />
-                    </div>
-                    <div>
-                         <label htmlFor="doc-file" className="block text-sm font-medium text-text-secondary mb-1.5">
-                            Upload File Dokumen (Maks 6)
-                        </label>
-                         <input
-                            id="doc-file"
-                            type="file"
-                            multiple
-                            onChange={handleFileChange}
-                            accept=".png,.jpg,.jpeg"
-                            className="block w-full text-sm text-text-secondary cursor-pointer
-                                file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0
-                                file:text-sm file:font-semibold
-                                file:bg-brand-600 file:text-text-on-brand
-                                hover:file:bg-brand-700
-                                focus:outline-none focus:ring-1 focus:ring-border-focus"
-                            disabled={isSubmitting || filesToUpload.length >= 6}
-                        />
-                        <p className="mt-1 text-xs text-text-tertiary">PNG & JPG (MAX. 5MB per file)</p>
-                        {filesToUpload.length > 0 && (
-                           <div>
-                             <div className={`mt-2 text-sm flex items-center ${filesToUpload.length > 6 ? 'text-red-500 font-semibold' : filesToUpload.length === 6 ? 'text-orange-500 font-semibold' : 'text-gray-500'}`}>
-                               File terpilih: {filesToUpload.length}/6
-                               {filesToUpload.length > 6 && (
-                                 <span className="ml-2 bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded">Melebihi batas</span>
-                               )}
-                               {filesToUpload.length === 6 && (
-                                 <span className="ml-2 bg-orange-100 text-orange-800 text-xs font-medium px-2.5 py-0.5 rounded">Maksimum</span>
-                               )}
-                             </div>
-                             <ul className="mt-2 space-y-2">
-                               {filesToUpload.map((file, index) => (
-                                 <li key={index} className="flex items-center gap-2 text-sm">
-                                   <button
-                                     type="button"
-                                     onClick={() => handleRemoveFile(index)}
-                                     className="text-red-500 hover:text-red-700 focus:outline-none"
-                                     title="Hapus file"
-                                   >
-                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                     </svg>
-                                   </button>
-                                   <span className="text-gray-800 dark:text-gray-200 truncate max-w-xs">
-                                     {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
-                                   </span>
-                                 </li>
-                               ))}
-                             </ul>
-                           </div>
-                         )}
-                    </div>
-                </div>
+                  <div className="px-6 py-5 flex-grow overflow-y-auto space-y-6">
+                      <div>
+                          <label htmlFor="doc-notulensi" className="block text-sm font-medium text-text-secondary mb-1.5">
+                              Notulensi Rapat <span className="text-red-500">*</span>
+                          </label>
+                          <textarea
+                              id="doc-notulensi"
+                              rows={5}
+                              value={notulensiInput}
+                              onChange={handleNotulensiChange} // <-- Gunakan handler baru
+                              placeholder="Masukkan hasil notulensi rapat di sini (minimal 30 karakter)..."
+                              className={clsx( // <-- Gunakan clsx untuk kelas kondisional
+                                  baseInputClass,
+                                  'w-full resize-y',
+                                  notulensiError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 focus:ring-indigo-500'
+                              )}
+                              disabled={isSubmitting}
+                              required={true} // <-- Tetap ada untuk aksesibilitas & fallback
+                          />
+                          {/* Tampilkan pesan error dan jumlah kata */}
+                          <div className="flex justify-between mt-1 text-xs">
+                              {notulensiError ? (
+                                  <p className="text-red-500">{notulensiError}</p>
+                              ) : (
+                                  <p className="text-text-tertiary">Minimal 30 karakter.</p>
+                              )}
+                              <p className="text-text-tertiary">{notulensiInput.length} karakter</p>
+                          </div>
+                      </div>
+                      <div>
+                          <label htmlFor="doc-file" className="block text-sm font-medium text-text-secondary mb-1.5">
+                              Upload File Dokumen (Maks 6)
+                          </label>
+                          <input
+                              id="doc-file"
+                              type="file"
+                              multiple
+                              onChange={handleFileChange}
+                              accept=".png,.jpg,.jpeg" // <-- Anda bisa tambahkan .pdf, .doc, .docx jika perlu
+                              className="block w-full text-sm text-text-secondary cursor-pointer
+                                  file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0
+                                  file:text-sm file:font-semibold
+                                  file:bg-brand-600 file:text-text-on-brand
+                                  hover:file:bg-brand-700
+                                  focus:outline-none focus:ring-1 focus:ring-border-focus"
+                              disabled={isSubmitting || filesToUpload.length >= 6}
+                          />
+                          <p className="mt-1 text-xs text-text-tertiary">PNG & JPG (MAX. 5MB per file)</p>
+                          {filesToUpload.length > 0 && (
+                              <div>
+                                  <div className={`mt-2 text-sm flex items-center ${filesToUpload.length > 6 ? 'text-red-500 font-semibold' : filesToUpload.length === 6 ? 'text-orange-500 font-semibold' : 'text-gray-500'}`}>
+                                      File terpilih: {filesToUpload.length}/6
+                                      {filesToUpload.length > 6 && (
+                                          <span className="ml-2 bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded">Melebihi batas</span>
+                                      )}
+                                      {filesToUpload.length === 6 && (
+                                          <span className="ml-2 bg-orange-100 text-orange-800 text-xs font-medium px-2.5 py-0.5 rounded">Maksimum</span>
+                                      )}
+                                  </div>
+                                  <ul className="mt-2 space-y-2">
+                                      {filesToUpload.map((file, index) => (
+                                          <li key={index} className="flex items-center gap-2 text-sm">
+                                              <button
+                                                  type="button"
+                                                  onClick={() => handleRemoveFile(index)}
+                                                  className="text-red-500 hover:text-red-700 focus:outline-none"
+                                                  title="Hapus file"
+                                              >
+                                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                  </svg>
+                                              </button>
+                                              <span className="text-gray-800 dark:text-gray-200 truncate max-w-xs">
+                                                  {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                                              </span>
+                                          </li>
+                                      ))}
+                                  </ul>
+                              </div>
+                          )}
+                      </div>
+                  </div>
 
-                <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border-default">
-                    <button
-                        onClick={closeModal}
-                        type="button" 
-                        disabled={isSubmitting}
-                        className={clsx(
-                            baseButtonClass,
-                            'px-4 py-2 bg-gray-700 text-gray-200 rounded-md hover:bg-gray-600 disabled:opacity-50'
-                        )}
-                    >
-                        Batal
-                    </button>
-                    <button
-                        onClick={(e) => {
-                          if (filesToUpload.length > 6 || hasAttemptedOverUpload) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            Swal.fire({
-                              title: 'Gagal!',
-                              text: `Tombol nonaktif. ${hasAttemptedOverUpload ? 'Anda mencoba mengunggah lebih dari 6 file.' : 'Jumlah file ('+ filesToUpload.length +') melebihi batas (6).'} Silakan kurangi jumlah file.`,
-                              icon: 'error',
-                              confirmButtonColor: '#3085d6',
-                              confirmButtonText: 'Mengerti'
-                            });
-                             // Ensure the UI reflects the over-upload state
-                            if (filesToUpload.length > 6 && !hasAttemptedOverUpload) setHasAttemptedOverUpload(true);
-                            return false;
+                  <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border-default">
+                      <button
+                          onClick={closeModal}
+                          type="button"
+                          disabled={isSubmitting}
+                          className={clsx(
+                              baseButtonClass,
+                              'px-4 py-2 bg-gray-700 text-gray-200 rounded-md hover:bg-gray-600 disabled:opacity-50'
+                          )}
+                      >
+                          Batal
+                      </button>
+                      <button
+                          onClick={(e) => { // <-- Modifikasi onClick
+                              // Cek file dulu
+                              if (filesToUpload.length > 6 || hasAttemptedOverUpload) {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  Swal.fire({
+                                      title: 'Gagal!',
+                                      text: `Jumlah file (${filesToUpload.length}) melebihi batas (6). Silakan kurangi jumlah file.`,
+                                      icon: 'error',
+                                      confirmButtonText: 'Mengerti'
+                                  });
+                                  if (filesToUpload.length > 6 && !hasAttemptedOverUpload) setHasAttemptedOverUpload(true);
+                                  return false;
+                              }
+
+                              // Cek notulensi
+                              const currentNotulensiError = validateNotulensi(notulensiInput);
+                              setNotulensiError(currentNotulensiError); // Pastikan UI update
+
+                              if (currentNotulensiError) {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  Swal.fire({
+                                      title: 'Gagal!',
+                                      text: currentNotulensiError,
+                                      icon: 'error',
+                                      confirmButtonText: 'Mengerti'
+                                  });
+                                  return false;
+                              }
+                              
+                              // Jika lolos semua, simpan
+                              handleSimpanDokumen();
+                          }}
+                          type="button"
+                          // <-- Modifikasi disabled
+                          disabled={
+                              isSubmitting ||
+                              !!notulensiError || // <-- Cek jika ada error notulensi
+                              filesToUpload.length > 6 ||
+                              hasAttemptedOverUpload
                           }
-                          handleSimpanDokumen();
-                        }}
-                        type="button"
-                        disabled={isSubmitting || (!notulensiInput.trim() && filesToUpload.length === 0) || filesToUpload.length > 6 || hasAttemptedOverUpload}
-                        style={{ pointerEvents: (filesToUpload.length > 6 || hasAttemptedOverUpload) ? 'none' : 'auto' }}
-                        className={clsx(
-                            baseButtonClass,
-                            `px-4 py-2 ${(filesToUpload.length > 6 || hasAttemptedOverUpload) ? 'bg-red-500 opacity-70 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'} text-white rounded-md disabled:opacity-50` // Removed duplicate disabled:cursor-not-allowed as it's part of Tailwind's disabled: opacity-50
-                        )}
-                    >
-                        {isSubmitting ? 'Menyimpan...' : (filesToUpload.length > 6 || hasAttemptedOverUpload) ? 'Batas File Terlampaui' : 'Simpan Dokumen'}
-                    </button>
-                </div>
-            </div>
-        </Modal>
+                          style={{ pointerEvents: (filesToUpload.length > 6 || hasAttemptedOverUpload) ? 'none' : 'auto' }}
+                          className={clsx(
+                              baseButtonClass,
+                              'px-4 py-2 text-white rounded-md',
+                              (filesToUpload.length > 6 || hasAttemptedOverUpload)
+                                  ? 'bg-red-500 opacity-70 cursor-not-allowed'
+                                  : (isSubmitting || !!notulensiError)
+                                      ? 'bg-blue-400 opacity-50 cursor-not-allowed'
+                                      : 'bg-blue-600 hover:bg-blue-700'
+                          )}
+                      >
+                          {isSubmitting ? 'Menyimpan...' : (filesToUpload.length > 6 || hasAttemptedOverUpload) ? 'Batas File Terlampaui' : !!notulensiError ? 'Perbaiki Notulensi' : 'Simpan Dokumen'}
+                      </button>
+                  </div>
+              </div>
+          </Modal>
       )}
+     
 
       {isClient && activeActionMenuId && menuPosition && activeRapatForMenu && ReactDOM.createPortal(
         <div
