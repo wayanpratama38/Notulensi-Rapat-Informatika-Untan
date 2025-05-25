@@ -6,6 +6,7 @@ export async function fetchDosen() {
     }
     if (!res.ok) {
       const err = await res.json();
+      
       throw new Error(err.message || `Error fetching dosen: ${res.status}`);
     }
     return res.json();
