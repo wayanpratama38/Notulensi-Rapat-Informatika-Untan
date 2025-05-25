@@ -50,7 +50,6 @@ const Calendar = () => {
   const [selectedUserIds, setSelectedUserIds] = useState([]);
 
   const [isSubmittingEvent, setIsSubmittingEvent] = useState(false);
-  const [isCalendarLoading, setIsCalendarLoading] = useState(false);
   const [generalError, setGeneralError] = useState(null);
   
   const [timeError, setTimeError] = useState(null);
@@ -230,7 +229,7 @@ const Calendar = () => {
       }
   };
   
-  const showGlobalLoading = isLoadingUsers || isCalendarLoading || isSubmittingEvent;
+  const showGlobalLoading = isLoadingUsers || isSubmittingEvent;
 
   return (
       <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 flex flex-col h-full">
@@ -277,7 +276,7 @@ const Calendar = () => {
                       }
                   }}
                   editable={false} locale={'id'} firstDay={1} timeZone={'local'} height="100%" contentHeight="auto"
-                  loading={(isLoading) => setIsCalendarLoading(isLoading)}
+                 
               />
 
               <Modal isOpen={isOpen} onClose={() => { closeModal(); resetModalFields(); }} className="max-w-[700px] p-6 lg:p-10 bg-white dark:bg-gray-800 rounded-lg shadow-xl">
