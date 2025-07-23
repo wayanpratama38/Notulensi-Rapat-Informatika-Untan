@@ -8,7 +8,7 @@ services :
     ports:
       - "3000:3000"
     environment:
-      JWT_SECRET : MvIqNG5B5Z9+0wB3ISXm5JGGM/uzTECk+SwdtysMQtw=
+      JWT_SECRET : ${JWT_SECRET}
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_db:5432/${POSTGRES_DB}
       FONTS_DIR: ./public/fonts
       UPLOAD_DIR: ./public/uploads/documents
