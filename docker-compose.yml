@@ -1,0 +1,38 @@
+services :
+
+  nextjs_app : 
+    build : 
+      context:  .
+      dockerfile: Dockerfile
+    container_name : notulensi_rapat_untan
+    ports:
+      - "3000:3000"
+    environment:
+      JWT_SECRET : MvIqNG5B5Z9+0wB3ISXm5JGGM/uzTECk+SwdtysMQtw=
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_db:5432/${POSTGRES_DB}
+      FONTS_DIR: ./public/fonts
+      UPLOAD_DIR: ./public/uploads/documents
+    depends_on:
+      - postgres_db
+    networks:
+      - app_network
+
+  postgres_db : 
+    image : postgres:16-alpine
+    container_name : database_container
+    environment : 
+      POSTGRES_DB : ${POSTGRES_DB}
+      POSTGRES_USER : ${POSTGRES_USER}
+      POSTGRES_PASSWORD : ${POSTGRES_PASSWORD}
+    volumes : 
+      - postgres_data:/var/lib/postgresql/data
+    ports : 
+      - "5432:5432"
+    networks : 
+      - app_network
+
+volumes : 
+  postgres_data:
+
+networks:
+  app_network:

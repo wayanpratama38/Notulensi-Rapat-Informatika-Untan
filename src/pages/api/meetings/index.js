@@ -17,7 +17,7 @@ async function handler(req, res) {
         data: { status: 'SELESAI' },
       });
 
-      const { status, searchNamaRapat, sortBy = 'startDateTime', order = 'desc', page = 1, limit = 10 } = req.query;
+      const { status, searchNamaRapat, sortBy = 'startDateTime', order = 'desc', page = 1, limit = 10000 } = req.query;
       
       const whereClause = {};
       if (status) {
